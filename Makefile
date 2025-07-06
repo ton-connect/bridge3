@@ -3,9 +3,17 @@
 
 all: imports fmt test
 
-imports:
-	goimports -l -w $$(go list -f {{.Dir}} ./... | grep -v /vendor/)
+build:
+	go build -o callmebridge ./
+
 fmt:
-	gofmt -s -l -w $$(go list -f {{.Dir}} ./... | grep -v /vendor/)
+	gofmt -w $(GOFMT_FILES)
+
+fmtcheck:
+	@sh -c "'$(CURDIR)/scripts/gofmtcheck.sh'"
+
+lint:
+	golangci-lint run --timeout=10m --color=always
+
 test: 
 	go test $$(go list ./... | grep -v /vendor/) -race -coverprofile cover.out
