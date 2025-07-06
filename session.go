@@ -4,20 +4,21 @@ import (
 	"context"
 	"sync"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/callmedenchick/callmebridge/internal/models"
+	"github.com/callmedenchick/callmebridge/internal/storage"
+	log "github.com/sirupsen/logrus"
 )
 
 type Session struct {
 	mux         sync.RWMutex
 	ClientIds   []string
 	MessageCh   chan models.SseMessage
-	storage     db
+	storage     storage.Storage
 	Closer      chan interface{}
 	lastEventId int64
 }
 
-func NewSession(s db, clientIds []string, lastEventId int64) *Session {
+func NewSession(s storage.Storage, clientIds []string, lastEventId int64) *Session {
 	session := Session{
 		mux:         sync.RWMutex{},
 		ClientIds:   clientIds,

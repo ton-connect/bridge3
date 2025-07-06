@@ -1,4 +1,4 @@
-package pg
+package storage
 
 import (
 	"context"
@@ -22,7 +22,7 @@ var expiredMessagesMetric = promauto.NewCounter(prometheus.CounterOpts{
 })
 
 type Message []byte
-type Storage struct {
+type PgStorage struct {
 	postgres *pgxpool.Pool
 }
 
@@ -52,7 +52,7 @@ func MigrateDb(postgresURI string) error {
 	return nil
 }
 
-func NewStorage(postgresURI string) (*Storage, error) {
+func NewPgStorage(postgresURI string) (*PgStorage, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	log := log.WithField("prefix", "NewStorage")
 	defer cancel()
@@ -65,14 +65,14 @@ func NewStorage(postgresURI string) (*Storage, error) {
 		log.Info("migrte err: ", err)
 		return nil, err
 	}
-	s := Storage{
+	s := PgStorage{
 		postgres: c,
 	}
 	go s.worker()
 	return &s, nil
 }
 
-func (s *Storage) worker() {
+func (s *PgStorage) worker() {
 	log := log.WithField("prefix", "Storage.worker")
 	for {
 		<-time.NewTimer(time.Minute).C
@@ -87,7 +87,7 @@ func (s *Storage) worker() {
 
 }
 
-func (s *Storage) Add(ctx context.Context, key string, ttl int64, mes models.SseMessage) error {
+func (s *PgStorage) Add(ctx context.Context, key string, ttl int64, mes models.SseMessage) error {
 	_, err := s.postgres.Exec(ctx, `
 		INSERT INTO bridge.messages
 		(
@@ -104,7 +104,7 @@ func (s *Storage) Add(ctx context.Context, key string, ttl int64, mes models.Sse
 	return nil
 }
 
-func (s *Storage) GetMessages(ctx context.Context, keys []string, lastEventId int64) ([]models.SseMessage, error) { // interface{}
+func (s *PgStorage) GetMessages(ctx context.Context, keys []string, lastEventId int64) ([]models.SseMessage, error) { // interface{}
 	log := log.WithField("prefix", "Storage.GetQueue")
 	var messages []models.SseMessage
 	rows, err := s.postgres.Query(ctx, `SELECT event_id, bridge_message
@@ -128,7 +128,7 @@ func (s *Storage) GetMessages(ctx context.Context, keys []string, lastEventId in
 	return messages, nil
 }
 
-func (s *Storage) HealthCheck() error {
+func (s *PgStorage) HealthCheck() error {
 	log := log.WithField("prefix", "Storage.HealthCheck")
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()

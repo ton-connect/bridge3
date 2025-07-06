@@ -7,9 +7,8 @@ import (
 	_ "net/http/pprof"
 	"time"
 
+	"github.com/callmedenchick/callmebridge/internal/storage"
 	"github.com/labstack/echo-contrib/prometheus"
-	"github.com/callmedenchick/callmebridge/internal/storage/memory"
-	"github.com/callmedenchick/callmebridge/internal/storage/pg"
 	"golang.org/x/exp/slices"
 	"golang.org/x/time/rate"
 
@@ -25,11 +24,12 @@ func main() {
 	log.Info("Bridge is running")
 	config.LoadConfig()
 
-	dbConn, err := newStorage(config.Config.DbURI)
+	dbConn, err := storage.NewStorage(config.Config.DbURI)
+
 	if err != nil {
 		log.Fatalf("failed to create storage: %v", err)
 	}
-	if _, ok := dbConn.(*memory.Storage); ok {
+	if _, ok := dbConn.(*storage.MemStorage); ok {
 		log.Info("Using in-memory storage")
 	} else {
 		log.Info("Using PostgreSQL storage")
@@ -53,13 +53,13 @@ func main() {
 	http.HandleFunc("/ready", func(w http.ResponseWriter, r *http.Request) {
 		log := log.WithField("prefix", "ReadyHandler")
 		log.Debug("readiness check request received")
-		
+
 		if err := dbConn.HealthCheck(); err != nil {
 			log.Errorf("database connection error: %v", err)
 			http.Error(w, "Database not ready", http.StatusInternalServerError)
 			return
 		}
-		
+
 		w.Header().Set("Content-Type", "application/json")
 		response := map[string]string{
 			"status": "ready",
@@ -129,11 +129,4 @@ func main() {
 	} else {
 		log.Fatal(e.Start(fmt.Sprintf(":%v", config.Config.Port)))
 	}
-}
-
-func newStorage(dbURI string) (db, error) {
-	if dbURI != "" {
-		return pg.NewStorage(config.Config.DbURI)
-	}
-	return memory.NewStorage(), nil
 }

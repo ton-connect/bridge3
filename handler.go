@@ -14,12 +14,13 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/callmedenchick/callmebridge/internal/config"
+	"github.com/callmedenchick/callmebridge/internal/models"
+	"github.com/callmedenchick/callmebridge/internal/storage"
 	"github.com/labstack/echo/v4"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	log "github.com/sirupsen/logrus"
-	"github.com/callmedenchick/callmebridge/internal/config"
-	"github.com/callmedenchick/callmebridge/internal/models"
 )
 
 var (
@@ -56,22 +57,16 @@ type stream struct {
 type handler struct {
 	Mux               sync.RWMutex
 	Connections       map[string]*stream
-	storage           db
+	storage           storage.Storage
 	_eventIDs         int64
 	heartbeatInterval time.Duration
 }
 
-type db interface {
-	GetMessages(ctx context.Context, keys []string, lastEventId int64) ([]models.SseMessage, error)
-	Add(ctx context.Context, key string, ttl int64, mes models.SseMessage) error
-	HealthCheck() error
-}
-
-func newHandler(db db, heartbeatInterval time.Duration) *handler {
+func newHandler(s storage.Storage, heartbeatInterval time.Duration) *handler {
 	h := handler{
 		Mux:               sync.RWMutex{},
 		Connections:       make(map[string]*stream),
-		storage:           db,
+		storage:           s,
 		_eventIDs:         time.Now().UnixMicro(),
 		heartbeatInterval: heartbeatInterval,
 	}

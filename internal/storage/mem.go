@@ -1,4 +1,4 @@
-package memory
+package storage
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"github.com/callmedenchick/callmebridge/internal/models"
 )
 
-type Storage struct {
+type MemStorage struct {
 	db   map[string][]message
 	lock sync.Mutex
 }
@@ -22,8 +22,8 @@ func (m message) IsExpired(now time.Time) bool {
 	return m.expireAt.Before(now)
 }
 
-func NewStorage() *Storage {
-	s := Storage{
+func NewMemStorage() *MemStorage {
+	s := MemStorage{
 		db: map[string][]message{},
 	}
 	go s.watcher()
@@ -40,7 +40,7 @@ func removeExpiredMessages(ms []message, now time.Time) []message {
 	return results
 }
 
-func (s *Storage) watcher() {
+func (s *MemStorage) watcher() {
 	for {
 		s.lock.Lock()
 		for key, ms := range s.db {
@@ -51,7 +51,7 @@ func (s *Storage) watcher() {
 	}
 }
 
-func (s *Storage) GetMessages(ctx context.Context, keys []string, lastEventId int64) ([]models.SseMessage, error) {
+func (s *MemStorage) GetMessages(ctx context.Context, keys []string, lastEventId int64) ([]models.SseMessage, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -75,7 +75,7 @@ func (s *Storage) GetMessages(ctx context.Context, keys []string, lastEventId in
 	return results, nil
 }
 
-func (s *Storage) Add(ctx context.Context, key string, ttl int64, mes models.SseMessage) error {
+func (s *MemStorage) Add(ctx context.Context, key string, ttl int64, mes models.SseMessage) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -83,7 +83,7 @@ func (s *Storage) Add(ctx context.Context, key string, ttl int64, mes models.Sse
 	return nil
 }
 
-func (s *Storage) HealthCheck() error {
+func (s *MemStorage) HealthCheck() error {
 	// In-memory storage does not require health checks.
 	return nil
 }
