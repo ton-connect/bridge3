@@ -8,12 +8,12 @@ import (
 	"time"
 
 	"github.com/labstack/echo-contrib/prometheus"
-	"github.com/tonkeeper/bridge/storage/memory"
-	"github.com/tonkeeper/bridge/storage/pg"
+	"github.com/callmedenchick/callmebridge/internal/storage/memory"
+	"github.com/callmedenchick/callmebridge/internal/storage/pg"
 	"golang.org/x/exp/slices"
 	"golang.org/x/time/rate"
 
-	"github.com/tonkeeper/bridge/config"
+	"github.com/callmedenchick/callmebridge/internal/config"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"

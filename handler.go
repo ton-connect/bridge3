@@ -18,8 +18,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	log "github.com/sirupsen/logrus"
-	"github.com/tonkeeper/bridge/config"
-	"github.com/tonkeeper/bridge/datatype"
+	"github.com/callmedenchick/callmebridge/internal/config"
+	"github.com/callmedenchick/callmebridge/internal/models"
 )
 
 var (
@@ -62,8 +62,8 @@ type handler struct {
 }
 
 type db interface {
-	GetMessages(ctx context.Context, keys []string, lastEventId int64) ([]datatype.SseMessage, error)
-	Add(ctx context.Context, key string, ttl int64, mes datatype.SseMessage) error
+	GetMessages(ctx context.Context, keys []string, lastEventId int64) ([]models.SseMessage, error)
+	Add(ctx context.Context, key string, ttl int64, mes models.SseMessage) error
 	HealthCheck() error
 }
 
@@ -213,7 +213,7 @@ func (h *handler) SendMessageHandler(c echo.Context) error {
 		log.Error(err)
 		return c.JSON(HttpResError(err.Error(), http.StatusBadRequest))
 	}
-	mes, err := json.Marshal(datatype.BridgeMessage{
+	mes, err := json.Marshal(models.BridgeMessage{
 		From:    clientId[0],
 		Message: string(message),
 	})
@@ -243,7 +243,7 @@ func (h *handler) SendMessageHandler(c echo.Context) error {
 		}(clientId[0], topic[0], string(message))
 	}
 
-	sseMessage := datatype.SseMessage{
+	sseMessage := models.SseMessage{
 		EventId: h.nextID(),
 		Message: mes,
 	}

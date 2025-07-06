@@ -9,7 +9,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/tonkeeper/bridge/config"
+	"github.com/callmedenchick/callmebridge/internal/config"
 	"golang.org/x/exp/slices"
 )
 

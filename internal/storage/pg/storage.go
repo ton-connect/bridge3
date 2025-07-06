@@ -13,7 +13,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	log "github.com/sirupsen/logrus"
-	"github.com/tonkeeper/bridge/datatype"
+	"github.com/callmedenchick/callmebridge/internal/models"
 )
 
 var expiredMessagesMetric = promauto.NewCounter(prometheus.CounterOpts{
@@ -87,7 +87,7 @@ func (s *Storage) worker() {
 
 }
 
-func (s *Storage) Add(ctx context.Context, key string, ttl int64, mes datatype.SseMessage) error {
+func (s *Storage) Add(ctx context.Context, key string, ttl int64, mes models.SseMessage) error {
 	_, err := s.postgres.Exec(ctx, `
 		INSERT INTO bridge.messages
 		(
@@ -104,9 +104,9 @@ func (s *Storage) Add(ctx context.Context, key string, ttl int64, mes datatype.S
 	return nil
 }
 
-func (s *Storage) GetMessages(ctx context.Context, keys []string, lastEventId int64) ([]datatype.SseMessage, error) { // interface{}
+func (s *Storage) GetMessages(ctx context.Context, keys []string, lastEventId int64) ([]models.SseMessage, error) { // interface{}
 	log := log.WithField("prefix", "Storage.GetQueue")
-	var messages []datatype.SseMessage
+	var messages []models.SseMessage
 	rows, err := s.postgres.Query(ctx, `SELECT event_id, bridge_message
 	FROM bridge.messages
 	WHERE current_timestamp < end_time 
@@ -117,7 +117,7 @@ func (s *Storage) GetMessages(ctx context.Context, keys []string, lastEventId in
 		return nil, err
 	}
 	for rows.Next() {
-		var mes datatype.SseMessage
+		var mes models.SseMessage
 		err = rows.Scan(&mes.EventId, &mes.Message)
 		if err != nil {
 			log.Info(err)

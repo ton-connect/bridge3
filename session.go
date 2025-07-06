@@ -5,13 +5,13 @@ import (
 	"sync"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/tonkeeper/bridge/datatype"
+	"github.com/callmedenchick/callmebridge/internal/models"
 )
 
 type Session struct {
 	mux         sync.RWMutex
 	ClientIds   []string
-	MessageCh   chan datatype.SseMessage
+	MessageCh   chan models.SseMessage
 	storage     db
 	Closer      chan interface{}
 	lastEventId int64
@@ -22,7 +22,7 @@ func NewSession(s db, clientIds []string, lastEventId int64) *Session {
 		mux:         sync.RWMutex{},
 		ClientIds:   clientIds,
 		storage:     s,
-		MessageCh:   make(chan datatype.SseMessage, 10),
+		MessageCh:   make(chan models.SseMessage, 10),
 		Closer:      make(chan interface{}),
 		lastEventId: lastEventId,
 	}
@@ -48,7 +48,7 @@ func (s *Session) worker() {
 	close(s.MessageCh)
 }
 
-func (s *Session) AddMessageToQueue(ctx context.Context, mes datatype.SseMessage) {
+func (s *Session) AddMessageToQueue(ctx context.Context, mes models.SseMessage) {
 	select {
 	case <-s.Closer:
 	default:

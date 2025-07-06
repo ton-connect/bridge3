@@ -1,4 +1,4 @@
-module github.com/tonkeeper/bridge
+module github.com/callmedenchick/callmebridge
 
 go 1.18
 

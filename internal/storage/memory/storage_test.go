@@ -6,12 +6,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tonkeeper/bridge/datatype"
+	"github.com/callmedenchick/callmebridge/internal/models"
 )
 
 func newMessage(expire time.Time, i int) message {
 	return message{
-		SseMessage: datatype.SseMessage{EventId: int64(i)},
+		SseMessage: models.SseMessage{EventId: int64(i)},
 		expireAt:   expire,
 	}
 }
@@ -64,20 +64,20 @@ func Test_removeExpiredMessages(t *testing.T) {
 
 func TestStorage(t *testing.T) {
 	s := &Storage{db: map[string][]message{}}
-	s.Add(context.Background(), "1", 2, datatype.SseMessage{EventId: 1})
-	s.Add(context.Background(), "2", 2, datatype.SseMessage{EventId: 2})
-	s.Add(context.Background(), "2", 2, datatype.SseMessage{EventId: 3})
-	s.Add(context.Background(), "1", 2, datatype.SseMessage{EventId: 4})
+	s.Add(context.Background(), "1", 2, models.SseMessage{EventId: 1})
+	s.Add(context.Background(), "2", 2, models.SseMessage{EventId: 2})
+	s.Add(context.Background(), "2", 2, models.SseMessage{EventId: 3})
+	s.Add(context.Background(), "1", 2, models.SseMessage{EventId: 4})
 	tests := []struct {
 		name        string
 		keys        []string
 		lastEventId int64
-		want        []datatype.SseMessage
+		want        []models.SseMessage
 	}{
 		{
 			name: "one key",
 			keys: []string{"1"},
-			want: []datatype.SseMessage{
+			want: []models.SseMessage{
 				{EventId: 1},
 				{EventId: 4},
 			},
@@ -85,12 +85,12 @@ func TestStorage(t *testing.T) {
 		{
 			name: "keys not found",
 			keys: []string{"10", "20"},
-			want: []datatype.SseMessage{},
+			want: []models.SseMessage{},
 		},
 		{
 			name: "get all keys",
 			keys: []string{"1", "2"},
-			want: []datatype.SseMessage{
+			want: []models.SseMessage{
 				{EventId: 1},
 				{EventId: 4},
 				{EventId: 2},

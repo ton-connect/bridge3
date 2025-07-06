@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tonkeeper/bridge/datatype"
+	"github.com/callmedenchick/callmebridge/internal/models"
 )
 
 type Storage struct {
@@ -14,7 +14,7 @@ type Storage struct {
 }
 
 type message struct {
-	datatype.SseMessage
+	models.SseMessage
 	expireAt time.Time
 }
 
@@ -51,12 +51,12 @@ func (s *Storage) watcher() {
 	}
 }
 
-func (s *Storage) GetMessages(ctx context.Context, keys []string, lastEventId int64) ([]datatype.SseMessage, error) {
+func (s *Storage) GetMessages(ctx context.Context, keys []string, lastEventId int64) ([]models.SseMessage, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	now := time.Now()
-	results := make([]datatype.SseMessage, 0)
+	results := make([]models.SseMessage, 0)
 	for _, key := range keys {
 		messages, ok := s.db[key]
 		if !ok {
@@ -75,7 +75,7 @@ func (s *Storage) GetMessages(ctx context.Context, keys []string, lastEventId in
 	return results, nil
 }
 
-func (s *Storage) Add(ctx context.Context, key string, ttl int64, mes datatype.SseMessage) error {
+func (s *Storage) Add(ctx context.Context, key string, ttl int64, mes models.SseMessage) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
