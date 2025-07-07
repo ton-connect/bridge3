@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/callmedenchick/callmebridge/internal/config"
+	log "github.com/sirupsen/logrus"
 )
 
 type WebhookData struct {

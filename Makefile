@@ -1,5 +1,6 @@
 
 .PHONY: all imports fmt test
+GOFMT_FILES?=$$(find . -name '*.go' | grep -v vendor | grep -v yacc | grep -v .git)
 
 all: imports fmt test
 

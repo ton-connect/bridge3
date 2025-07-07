@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/callmedenchick/callmebridge/internal/models"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
@@ -13,7 +14,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	log "github.com/sirupsen/logrus"
-	"github.com/callmedenchick/callmebridge/internal/models"
 )
 
 var expiredMessagesMetric = promauto.NewCounter(prometheus.CounterOpts{
