@@ -48,6 +48,11 @@ var (
 		Name:    "number_of_client_ids_per_connection",
 		Buckets: []float64{1, 2, 3, 4, 5, 10, 20, 30, 40, 50, 100},
 	})
+	// TODO implement
+	// expiredMessagesMetric = promauto.NewCounter(prometheus.CounterOpts{
+	// 	Name: "number_of_expired_messages",
+	// 	Help: "The total number of expired messages",
+	// })
 )
 
 type stream struct {
@@ -85,7 +90,10 @@ func (h *handler) EventRegistrationHandler(c echo.Context) error {
 	c.Response().Header().Set("Connection", "keep-alive")
 	c.Response().Header().Set("Transfer-Encoding", "chunked")
 	c.Response().WriteHeader(http.StatusOK)
-	fmt.Fprint(c.Response(), "\n")
+	if _, err := fmt.Fprint(c.Response(), "\n"); err != nil {
+		log.Errorf("failed to write initial newline: %v", err)
+		return err
+	}
 	c.Response().Flush()
 	params := c.QueryParams()
 
@@ -228,7 +236,7 @@ func (h *handler) SendMessageHandler(c echo.Context) error {
 			if err != nil {
 				return
 			}
-			http.DefaultClient.Do(req)
+			http.DefaultClient.Do(req) //nolint:errcheck// TODO review golangci-lint issue
 		}()
 	}
 	topic, ok := params["topic"]
