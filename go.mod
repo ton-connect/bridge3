@@ -7,7 +7,7 @@ require (
 	github.com/golang-migrate/migrate/v4 v4.18.3
 	github.com/jackc/pgx/v4 v4.18.3
 	github.com/labstack/echo-contrib v0.17.4
-	github.com/labstack/echo/v4 v4.13.3
+	github.com/labstack/echo/v4 v4.13.4
 	github.com/prometheus/client_golang v1.22.0
 	github.com/sirupsen/logrus v1.9.3
 	golang.org/x/exp v0.0.0-20230626212559-97b1e661b5df
