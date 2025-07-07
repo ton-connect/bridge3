@@ -190,7 +190,7 @@ func (h *BridgeHandler) setSSEHeaders(c echo.Context) {
 	c.Response().Header().Set("Connection", "keep-alive")
 	c.Response().Header().Set("Transfer-Encoding", "chunked")
 	c.Response().WriteHeader(http.StatusOK)
-	fmt.Fprint(c.Response(), "\n")
+	_, _ = fmt.Fprint(c.Response(), "\n") // TODO check error here
 	c.Response().Flush()
 }
 
@@ -404,7 +404,8 @@ func (h *BridgeHandler) handleExternalIntegrations(c echo.Context, req *SendMess
 			if err != nil {
 				return
 			}
-			http.DefaultClient.Do(httpReq)
+			// TODO check error here
+			_, _ = http.DefaultClient.Do(httpReq)
 		}()
 	}
 
@@ -451,7 +452,11 @@ func sendWebhook(clientID string, body WebhookData, webhook string) error {
 	if err != nil {
 		return fmt.Errorf("failed send request: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() {
+		if closeErr := res.Body.Close(); closeErr != nil {
+			log.Errorf("failed to close response body: %v", closeErr)
+		}
+	}()
 	if res.StatusCode != http.StatusOK {
 		return fmt.Errorf("bad status code: %v", res.StatusCode)
 	}
