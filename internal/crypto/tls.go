@@ -1,4 +1,4 @@
-package main
+package crypto
 
 import (
 	"crypto/ecdsa"
@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func generateSelfSignedCertificate() ([]byte, []byte, error) {
+func GenerateSelfSignedCertificate() ([]byte, []byte, error) {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, nil, err

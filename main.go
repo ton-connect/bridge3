@@ -7,17 +7,16 @@ import (
 	_ "net/http/pprof"
 	"time"
 
+	"github.com/callmedenchick/callmebridge/internal/config"
+	"github.com/callmedenchick/callmebridge/internal/crypto"
 	"github.com/callmedenchick/callmebridge/internal/storage"
 	"github.com/labstack/echo-contrib/prometheus"
-	"golang.org/x/exp/slices"
-	"golang.org/x/time/rate"
-
-	"github.com/callmedenchick/callmebridge/internal/config"
-
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/exp/slices"
+	"golang.org/x/time/rate"
 )
 
 func main() {
@@ -121,7 +120,7 @@ func main() {
 	})
 	e.Use(p.HandlerFunc)
 	if config.Config.SelfSignedTLS {
-		cert, key, err := generateSelfSignedCertificate()
+		cert, key, err := crypto.GenerateSelfSignedCertificate()
 		if err != nil {
 			log.Fatalf("failed to generate self signed certificate: %v", err)
 		}

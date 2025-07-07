@@ -6,6 +6,7 @@
 *.dylib
 callmebridge
 .vscode/
+.DS_Store
 vendor/
 .DS_Store
 
