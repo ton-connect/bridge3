@@ -2,7 +2,7 @@
 [http bridge](https://github.com/ton-connect/docs/blob/main/bridge.md) for tonconnect 2.0:
 
 ## requirements
-- golang 1.18
+- golang 1.23
 - postgres
 
 ## how to  install
