@@ -17,6 +17,7 @@ import (
 	"github.com/callmedenchick/callmebridge/internal/config"
 	"github.com/callmedenchick/callmebridge/internal/models"
 	"github.com/callmedenchick/callmebridge/internal/storage"
+	"github.com/callmedenchick/callmebridge/internal/utils"
 	"github.com/labstack/echo/v4"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -83,7 +84,7 @@ func (h *handler) EventRegistrationHandler(c echo.Context) error {
 	_, ok := c.Response().Writer.(http.Flusher)
 	if !ok {
 		http.Error(c.Response().Writer, "streaming unsupported", http.StatusInternalServerError)
-		return c.JSON(HttpResError("streaming unsupported", http.StatusBadRequest))
+		return c.JSON(utils.HttpResError("streaming unsupported", http.StatusBadRequest))
 	}
 	c.Response().Header().Set("Content-Type", "text/event-stream")
 	c.Response().Header().Set("Cache-Control", "no-cache")
@@ -106,7 +107,7 @@ func (h *handler) EventRegistrationHandler(c echo.Context) error {
 			badRequestMetric.Inc()
 			errorMsg := "Last-Event-ID should be int"
 			log.Error(errorMsg)
-			return c.JSON(HttpResError(errorMsg, http.StatusBadRequest))
+			return c.JSON(utils.HttpResError(errorMsg, http.StatusBadRequest))
 		}
 	}
 	lastEventIdQuery, ok := params["last_event_id"]
@@ -116,7 +117,7 @@ func (h *handler) EventRegistrationHandler(c echo.Context) error {
 			badRequestMetric.Inc()
 			errorMsg := "last_event_id should be int"
 			log.Error(errorMsg)
-			return c.JSON(HttpResError(errorMsg, http.StatusBadRequest))
+			return c.JSON(utils.HttpResError(errorMsg, http.StatusBadRequest))
 		}
 	}
 	clientId, ok := params["client_id"]
@@ -124,7 +125,7 @@ func (h *handler) EventRegistrationHandler(c echo.Context) error {
 		badRequestMetric.Inc()
 		errorMsg := "param \"client_id\" not present"
 		log.Error(errorMsg)
-		return c.JSON(HttpResError(errorMsg, http.StatusBadRequest))
+		return c.JSON(utils.HttpResError(errorMsg, http.StatusBadRequest))
 	}
 	clientIds := strings.Split(clientId[0], ",")
 	clientIdsPerConnectionMetric.Observe(float64(len(clientIds)))
@@ -180,7 +181,7 @@ func (h *handler) SendMessageHandler(c echo.Context) error {
 		badRequestMetric.Inc()
 		errorMsg := "param \"client_id\" not present"
 		log.Error(errorMsg)
-		return c.JSON(HttpResError(errorMsg, http.StatusBadRequest))
+		return c.JSON(utils.HttpResError(errorMsg, http.StatusBadRequest))
 	}
 
 	toId, ok := params["to"]
@@ -188,7 +189,7 @@ func (h *handler) SendMessageHandler(c echo.Context) error {
 		badRequestMetric.Inc()
 		errorMsg := "param \"to\" not present"
 		log.Error(errorMsg)
-		return c.JSON(HttpResError(errorMsg, http.StatusBadRequest))
+		return c.JSON(utils.HttpResError(errorMsg, http.StatusBadRequest))
 	}
 
 	ttlParam, ok := params["ttl"]
@@ -196,25 +197,25 @@ func (h *handler) SendMessageHandler(c echo.Context) error {
 		badRequestMetric.Inc()
 		errorMsg := "param \"ttl\" not present"
 		log.Error(errorMsg)
-		return c.JSON(HttpResError(errorMsg, http.StatusBadRequest))
+		return c.JSON(utils.HttpResError(errorMsg, http.StatusBadRequest))
 	}
 	ttl, err := strconv.ParseInt(ttlParam[0], 10, 32)
 	if err != nil {
 		badRequestMetric.Inc()
 		log.Error(err)
-		return c.JSON(HttpResError(err.Error(), http.StatusBadRequest))
+		return c.JSON(utils.HttpResError(err.Error(), http.StatusBadRequest))
 	}
 	if ttl > 300 { // TODO: config
 		badRequestMetric.Inc()
 		errorMsg := "param \"ttl\" too high"
 		log.Error(errorMsg)
-		return c.JSON(HttpResError(errorMsg, http.StatusBadRequest))
+		return c.JSON(utils.HttpResError(errorMsg, http.StatusBadRequest))
 	}
 	message, err := io.ReadAll(c.Request().Body)
 	if err != nil {
 		badRequestMetric.Inc()
 		log.Error(err)
-		return c.JSON(HttpResError(err.Error(), http.StatusBadRequest))
+		return c.JSON(utils.HttpResError(err.Error(), http.StatusBadRequest))
 	}
 	mes, err := json.Marshal(models.BridgeMessage{
 		From:    clientId[0],
@@ -223,7 +224,7 @@ func (h *handler) SendMessageHandler(c echo.Context) error {
 	if err != nil {
 		badRequestMetric.Inc()
 		log.Error(err)
-		return c.JSON(HttpResError(err.Error(), http.StatusBadRequest))
+		return c.JSON(utils.HttpResError(err.Error(), http.StatusBadRequest))
 	}
 	if config.Config.CopyToURL != "" {
 		go func() {
@@ -269,7 +270,7 @@ func (h *handler) SendMessageHandler(c echo.Context) error {
 	}()
 
 	transferedMessagesNumMetric.Inc()
-	return c.JSON(http.StatusOK, HttpResOk())
+	return c.JSON(http.StatusOK, utils.HttpResOk())
 
 }
 

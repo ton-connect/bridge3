@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 
+	"github.com/callmedenchick/callmebridge/internal/utils"
 	"github.com/labstack/echo/v4"
 )
 
@@ -14,7 +15,7 @@ func connectionsLimitMiddleware(counter *ConnectionsLimiter, skipper func(c echo
 			}
 			release, err := counter.leaseConnection(c.Request())
 			if err != nil {
-				return c.JSON(HttpResError(err.Error(), http.StatusTooManyRequests))
+				return c.JSON(utils.HttpResError(err.Error(), http.StatusTooManyRequests))
 			}
 			defer release()
 			return next(c)

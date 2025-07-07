@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/callmedenchick/callmebridge/internal/config"
-	"github.com/callmedenchick/callmebridge/internal/crypto"
+	"github.com/callmedenchick/callmebridge/internal/utils"
 	"github.com/callmedenchick/callmebridge/internal/storage"
 	"github.com/labstack/echo-contrib/prometheus"
 	"github.com/labstack/echo/v4"
@@ -110,7 +110,9 @@ func main() {
 
 	h := newHandler(dbConn, time.Duration(config.Config.HeartbeatInterval)*time.Second)
 
-	registerHandlers(e, h)
+	e.GET("/bridge/events", h.EventRegistrationHandler)
+	e.POST("/bridge/message", h.SendMessageHandler)
+	
 	var existedPaths []string
 	for _, r := range e.Routes() {
 		existedPaths = append(existedPaths, r.Path)
@@ -120,7 +122,7 @@ func main() {
 	})
 	e.Use(p.HandlerFunc)
 	if config.Config.SelfSignedTLS {
-		cert, key, err := crypto.GenerateSelfSignedCertificate()
+		cert, key, err := utils.GenerateSelfSignedCertificate()
 		if err != nil {
 			log.Fatalf("failed to generate self signed certificate: %v", err)
 		}
