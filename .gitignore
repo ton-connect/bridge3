@@ -21,3 +21,6 @@ vendor/
 
 .idea
 env.yaml
+
+# Bridge SDK test directory
+bridge-sdk/
