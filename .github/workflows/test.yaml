@@ -17,3 +17,70 @@ jobs:
 
      - name: unit tests
        run: make test
+
+  integration:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_USER: testuser
+          POSTGRES_DB: testdb
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.23'
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Install dependencies
+      run: go mod download
+
+    - name: Run unit tests
+      run: make test
+
+    - name: Build bridge
+      run: make build
+
+    - name: Run integration tests
+      run: make integration-test
+      env:
+        # DB_URI: postgres://testuser:testpass@localhost:5432/testdb?sslmode=disable
+        # PORT: 8081
+        # HEALTH_PORT: 9103
+
+    # - name: Upload test results
+    #   uses: actions/upload-artifact@v3
+    #   if: always()
+    #   with:
+    #     name: test-results
+    #     path: |
+    #       coverage.out
+    #       bridge-sdk/
+    #     retention-days: 7
