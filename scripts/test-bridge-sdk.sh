@@ -37,14 +37,6 @@ echo "📋 Installing bridge-sdk dependencies..."
 cd "$BRIDGE_SDK_DIR"
 npm install
 
-# Check if bridge is accessible
-echo "🔍 Checking if bridge is accessible at $BRIDGE_URL..."
-if ! curl -f "$BRIDGE_URL/health" &> /dev/null; then
-    echo "⚠️  Warning: Bridge health endpoint is not accessible at $BRIDGE_URL/health"
-    echo "   Make sure your bridge is running before running the tests."
-    echo "   You can start it with: make build && ./callmebridge"
-fi
-
 # Run tests
 echo "🧪 Running bridge-sdk tests..."
 BRIDGE_URL="$BRIDGE_URL" npx jest

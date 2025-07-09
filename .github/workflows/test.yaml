@@ -21,21 +21,6 @@ jobs:
   integration:
     runs-on: ubuntu-latest
     
-    services:
-      postgres:
-        image: postgres:13
-        env:
-          POSTGRES_PASSWORD: testpass
-          POSTGRES_USER: testuser
-          POSTGRES_DB: testdb
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
     steps:
     - uses: actions/checkout@v4
 
@@ -70,17 +55,3 @@ jobs:
 
     - name: Run integration tests
       run: make integration-test
-      # env:
-        # DB_URI: postgres://testuser:testpass@localhost:5432/testdb?sslmode=disable
-        # PORT: 8081
-        # HEALTH_PORT: 9103
-
-    # - name: Upload test results
-    #   uses: actions/upload-artifact@v3
-    #   if: always()
-    #   with:
-    #     name: test-results
-    #     path: |
-    #       coverage.out
-    #       bridge-sdk/
-    #     retention-days: 7
