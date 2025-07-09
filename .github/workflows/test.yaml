@@ -70,7 +70,7 @@ jobs:
 
     - name: Run integration tests
       run: make integration-test
-      env:
+      # env:
         # DB_URI: postgres://testuser:testpass@localhost:5432/testdb?sslmode=disable
         # PORT: 8081
         # HEALTH_PORT: 9103
