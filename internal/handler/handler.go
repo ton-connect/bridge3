@@ -1,4 +1,4 @@
-package main
+package handler
 
 import (
 	"bytes"
@@ -68,7 +68,7 @@ type handler struct {
 	heartbeatInterval time.Duration
 }
 
-func newHandler(s storage.Storage, heartbeatInterval time.Duration) *handler {
+func NewHandler(s storage.Storage, heartbeatInterval time.Duration) *handler {
 	h := handler{
 		Mux:               sync.RWMutex{},
 		Connections:       make(map[string]*stream),

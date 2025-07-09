@@ -5,19 +5,61 @@ import (
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
+	"strings"
 	"time"
 
 	"github.com/callmedenchick/callmebridge/internal/config"
-	"github.com/callmedenchick/callmebridge/internal/utils"
+	"github.com/callmedenchick/callmebridge/internal/handler"
+	bridge_middleware "github.com/callmedenchick/callmebridge/internal/middleware"
 	"github.com/callmedenchick/callmebridge/internal/storage"
+	"github.com/callmedenchick/callmebridge/internal/utils"
 	"github.com/labstack/echo-contrib/prometheus"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	client_prometheus "github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/exp/slices"
 	"golang.org/x/time/rate"
 )
+
+var tokenUsageMetric = promauto.NewCounterVec(client_prometheus.CounterOpts{
+	Name: "bridge_token_usage",
+}, []string{"token"})
+
+func skipRateLimitsByToken(request *http.Request) bool {
+	if request == nil {
+		return false
+	}
+	authorization := request.Header.Get("Authorization")
+	if authorization == "" {
+		return false
+	}
+	token := strings.TrimPrefix(authorization, "Bearer ")
+	exist := slices.Contains(config.Config.RateLimitsByPassToken, token)
+	if exist {
+		tokenUsageMetric.WithLabelValues(token).Inc()
+		return true
+	}
+	return false
+}
+
+func connectionsLimitMiddleware(counter *bridge_middleware.ConnectionsLimiter, skipper func(c echo.Context) bool) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			if skipper(c) {
+				return next(c)
+			}
+			release, err := counter.LeaseConnection(c.Request())
+			if err != nil {
+				return c.JSON(utils.HttpResError(err.Error(), http.StatusTooManyRequests))
+			}
+			defer release()
+			return next(c)
+		}
+	}
+}
 
 func main() {
 	log.Info("Bridge is running")
@@ -90,7 +132,7 @@ func main() {
 		},
 		Store: middleware.NewRateLimiterMemoryStore(rate.Limit(config.Config.RPSLimit)),
 	}))
-	e.Use(connectionsLimitMiddleware(newConnectionLimiter(config.Config.ConnectionsLimit), func(c echo.Context) bool {
+	e.Use(connectionsLimitMiddleware(bridge_middleware.NewConnectionLimiter(config.Config.ConnectionsLimit), func(c echo.Context) bool {
 		if skipRateLimitsByToken(c.Request()) || c.Path() != "/bridge/events" {
 			return true
 		}
@@ -108,11 +150,11 @@ func main() {
 		e.Use(corsConfig)
 	}
 
-	h := newHandler(dbConn, time.Duration(config.Config.HeartbeatInterval)*time.Second)
+	h := handler.NewHandler(dbConn, time.Duration(config.Config.HeartbeatInterval)*time.Second)
 
 	e.GET("/bridge/events", h.EventRegistrationHandler)
 	e.POST("/bridge/message", h.SendMessageHandler)
-	
+
 	var existedPaths []string
 	for _, r := range e.Routes() {
 		existedPaths = append(existedPaths, r.Path)
