@@ -5,7 +5,7 @@ GOFMT_FILES?=$$(find . -name '*.go' | grep -v vendor | grep -v yacc | grep -v .g
 all: imports fmt test
 
 build:
-	go build -o callmebridge ./
+	go build -o callmebridge cmd/bridge/main.go
 
 fmt:
 	gofmt -w $(GOFMT_FILES)
