@@ -1,4 +1,4 @@
-# CallMeBridge
+# bridge
 
 [HTTP bridge](https://github.com/ton-connect/docs/blob/main/bridge.md) implementation for TON Connect 2.0.
 
