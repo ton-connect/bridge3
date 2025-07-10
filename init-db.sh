@@ -2,7 +2,7 @@
 set -e
 
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
-    -- TODO get rid of this file, do migrtions instead
+    -- TODO get rid of this file, do migrations instead
     CREATE SCHEMA IF NOT EXISTS bridge;
     
     DROP TABLE IF EXISTS bridge.messages;
