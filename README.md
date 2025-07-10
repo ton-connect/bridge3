@@ -1,45 +1,75 @@
-# bridge
-[http bridge](https://github.com/ton-connect/docs/blob/main/bridge.md) for tonconnect 2.0:
+# 🌉 CallMeBridge
 
-## requirements
-- Golang 1.23
-- postgres
-- Node.js and npm (for bridge-sdk testing)
+[HTTP bridge](https://github.com/ton-connect/docs/blob/main/bridge.md) implementation for TON Connect 2.0.
 
-## how to install
-- git clone https://github.com/ton-connect/bridge
-- cd bridge
-- go build ./ 
-- go run bridge
+## 🚀 Quick Start
 
-## testing
-
-### Unit Tests
-Run Go unit tests:
 ```bash
-make test
+git clone https://github.com/callmedenchick/callmebridge
+cd callmebridge
+make build
+./callmebridge
 ```
 
-### Bridge SDK Tests
-Test against the official ton-connect bridge-sdk:
+## 📋 Requirements
+
+- Go 1.23+
+- PostgreSQL (optional)
+- Node.js & npm (for testing)
+
+## ⚙️ Configuration
+
+Configure using environment variables:
+
 ```bash
-# Test against a running bridge instance
-make test-bridge-sdk
-
-# Run full integration tests (starts bridge, runs tests, stops bridge)
-make integration-test
-
-# Run all tests (unit + bridge-sdk)
-make test-all
+PORT=8081                    # Server port
+POSTGRES_URI="postgres://user:pass@host/dbname"  # Database connection
 ```
 
-### Bridge SDK Test Requirements
-- Node.js and npm must be installed
-- The bridge-sdk tests will clone the official repository automatically
-- Set `BRIDGE_URL` environment variable to test against a different bridge instance
-- Default bridge URL is `http://localhost:8081`
+## 🧪 Testing
 
-## environments
-PORT
+```bash
+make test              # Unit tests
+make test-bridge-sdk   # Bridge SDK tests
+make integration-test  # Full integration tests
+make test-all         # All tests
+```
 
-POSTGRES_URI ##example"postgres://user:pass@host/dbname"
+Set `BRIDGE_URL` environment variable to test against a different bridge instance.
+
+## 🛠️ API Endpoints
+
+### Bridge Endpoints
+
+- `GET /bridge/events` - Server-Sent Events for real-time message delivery
+- `POST /bridge/message` - Send messages through the bridge
+
+### Health & Monitoring
+
+- `GET /health` - Health check endpoint
+- `GET /ready` - Readiness check (includes database connectivity)
+- `GET /metrics` - Prometheus metrics
+
+## 📊 Monitoring
+
+CallMeBridge provides comprehensive monitoring capabilities:
+
+### Prometheus Metrics
+
+- `number_of_active_connections` - Active WebSocket connections
+- `number_of_active_subscriptions` - Active client subscriptions
+- `number_of_transfered_messages` - Total messages transferred
+- `number_of_delivered_messages` - Total messages delivered
+- `number_of_bad_requests` - Bad request count
+- `number_of_client_ids_per_connection` - Client IDs per connection histogram
+- `bridge_token_usage` - Token usage by bypass tokens
+
+### Health Checks
+
+The bridge provides two health endpoints:
+- `/health` - Basic service health
+- `/ready` - Service readiness including database connectivity
+
+---
+
+Made with ❤️ for the TON ecosystem
