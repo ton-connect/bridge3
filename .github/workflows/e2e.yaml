@@ -51,7 +51,7 @@ jobs:
         sleep 30
         
         # Wait for nginx load balancer
-        timeout 60 bash -c 'until curl -f http://localhost:8080/bridge; do sleep 2; done'
+        timeout 60 bash -c 'until curl -f http://localhost:8080/health; do sleep 2; done'
         
         echo "Services are ready!"
 
