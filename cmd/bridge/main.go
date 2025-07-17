@@ -40,6 +40,11 @@ var (
 	})
 )
 
+func init() {
+	client_prometheus.MustRegister(healthMetric)
+	client_prometheus.MustRegister(readyMetric)
+}
+
 func skipRateLimitsByToken(request *http.Request) bool {
 	if request == nil {
 		return false
