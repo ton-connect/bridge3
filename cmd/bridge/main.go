@@ -12,6 +12,7 @@ import (
 	"github.com/callmedenchick/callmebridge/internal/handler"
 	bridge_middleware "github.com/callmedenchick/callmebridge/internal/middleware"
 	"github.com/callmedenchick/callmebridge/internal/storage"
+
 	"github.com/callmedenchick/callmebridge/internal/utils"
 	"github.com/labstack/echo-contrib/prometheus"
 	"github.com/labstack/echo/v4"
@@ -24,9 +25,20 @@ import (
 	"golang.org/x/time/rate"
 )
 
-var tokenUsageMetric = promauto.NewCounterVec(client_prometheus.CounterOpts{
-	Name: "bridge_token_usage",
-}, []string{"token"})
+var (
+	tokenUsageMetric = promauto.NewCounterVec(client_prometheus.CounterOpts{
+		Name: "bridge_token_usage",
+	}, []string{"token"})
+
+	healthMetric = client_prometheus.NewGauge(client_prometheus.GaugeOpts{
+		Name: "bridge_health_status",
+		Help: "Health status of the bridge (1 = healthy, 0 = unhealthy)",
+	})
+	readyMetric = client_prometheus.NewGauge(client_prometheus.GaugeOpts{
+		Name: "bridge_ready_status",
+		Help: "Ready status of the bridge (1 = ready, 0 = not ready)",
+	})
+)
 
 func skipRateLimitsByToken(request *http.Request) bool {
 	if request == nil {
@@ -80,12 +92,16 @@ func main() {
 	http.Handle("/health", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log := log.WithField("prefix", "HealthHandler")
 		log.Debug("health check request received")
+
+		healthMetric.Set(1)
+
 		w.Header().Set("Content-Type", "application/json")
 		response := map[string]string{
 			"status": "ok",
 		}
 		if err := json.NewEncoder(w).Encode(response); err != nil {
 			log.Errorf("failed to encode health check response: %v", err)
+			healthMetric.Set(0)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
@@ -97,9 +113,12 @@ func main() {
 
 		if err := dbConn.HealthCheck(); err != nil {
 			log.Errorf("database connection error: %v", err)
+			readyMetric.Set(0)
 			http.Error(w, "Database not ready", http.StatusInternalServerError)
 			return
 		}
+
+		readyMetric.Set(1)
 
 		w.Header().Set("Content-Type", "application/json")
 		response := map[string]string{
@@ -107,11 +126,33 @@ func main() {
 		}
 		if err := json.NewEncoder(w).Encode(response); err != nil {
 			log.Errorf("failed to encode readiness check response: %v", err)
+			readyMetric.Set(0)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
 		log.Debug("readiness check response sent")
 	})
+
+	healthMetric.Set(1)
+	if err := dbConn.HealthCheck(); err != nil {
+		readyMetric.Set(0)
+	} else {
+		readyMetric.Set(1)
+	}
+
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			if err := dbConn.HealthCheck(); err != nil {
+				readyMetric.Set(0)
+			} else {
+				readyMetric.Set(1)
+			}
+		}
+	}()
+
 	go func() {
 		log.Fatal(http.ListenAndServe(":9103", nil))
 	}()
