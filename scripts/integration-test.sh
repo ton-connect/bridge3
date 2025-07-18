@@ -4,14 +4,11 @@
 set -e
 
 BRIDGE_PORT=${PORT:-8081}
-HEALTH_PORT=${HEALTH_PORT:-9103}
 BRIDGE_URL=${BRIDGE_URL:-http://localhost:$BRIDGE_PORT}
-HEALTH_URL=${HEALTH_URL:-http://localhost:$HEALTH_PORT}
 BRIDGE_BINARY="./callmebridge"
 
 echo "🚀 Starting integration tests with bridge-sdk..."
 echo "Bridge URL: $BRIDGE_URL"
-echo "Health URL: $HEALTH_URL"
 
 # Build the bridge if it doesn't exist
 if [ ! -f "$BRIDGE_BINARY" ]; then
@@ -40,7 +37,7 @@ trap cleanup EXIT
 # Wait for bridge to be ready
 echo "⏳ Waiting for bridge to be ready..."
 for i in {1..30}; do
-    if curl -f "$HEALTH_URL/health" &> /dev/null; then
+    if curl -f "$BRIDGE_URL/health" &> /dev/null; then
         echo "✅ Bridge is ready!"
         break
     fi

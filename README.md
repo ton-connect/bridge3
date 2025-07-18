@@ -52,5 +52,7 @@ CallMeBridge provides comprehensive monitoring capabilities:
 - `number_of_bad_requests` - Bad request count
 - `number_of_client_ids_per_connection` - Client IDs per connection histogram
 - `bridge_token_usage` - Token usage by bypass tokens
+- `bridge_health_status` - Health status of the bridge (1 = healthy, 0 = unhealthy)
+- `bridge_ready_status` - Ready status of the bridge (1 = ready, 0 = not ready)
 
 Made with ❤️ for the TON ecosystem
