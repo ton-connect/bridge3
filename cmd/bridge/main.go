@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
@@ -93,51 +92,6 @@ func main() {
 		log.Info("Using PostgreSQL storage")
 	}
 
-	http.Handle("/metrics", promhttp.Handler())
-	http.Handle("/health", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log := log.WithField("prefix", "HealthHandler")
-		log.Debug("health check request received")
-
-		healthMetric.Set(1)
-
-		w.Header().Set("Content-Type", "application/json")
-		response := map[string]string{
-			"status": "ok",
-		}
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			log.Errorf("failed to encode health check response: %v", err)
-			healthMetric.Set(0)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-		log.Debug("health check response sent")
-	}))
-	http.HandleFunc("/ready", func(w http.ResponseWriter, r *http.Request) {
-		log := log.WithField("prefix", "ReadyHandler")
-		log.Debug("readiness check request received")
-
-		if err := dbConn.HealthCheck(); err != nil {
-			log.Errorf("database connection error: %v", err)
-			readyMetric.Set(0)
-			http.Error(w, "Database not ready", http.StatusInternalServerError)
-			return
-		}
-
-		readyMetric.Set(1)
-
-		w.Header().Set("Content-Type", "application/json")
-		response := map[string]string{
-			"status": "ready",
-		}
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			log.Errorf("failed to encode readiness check response: %v", err)
-			readyMetric.Set(0)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-		log.Debug("readiness check response sent")
-	})
-
 	healthMetric.Set(1)
 	if err := dbConn.HealthCheck(); err != nil {
 		readyMetric.Set(0)
@@ -156,10 +110,6 @@ func main() {
 				readyMetric.Set(1)
 			}
 		}
-	}()
-
-	go func() {
-		log.Fatal(http.ListenAndServe(":9103", nil))
 	}()
 
 	e := echo.New()
@@ -201,11 +151,53 @@ func main() {
 	e.GET("/bridge/events", h.EventRegistrationHandler)
 	e.POST("/bridge/message", h.SendMessageHandler)
 
+	// Health and ready endpoints
+	e.GET("/health", func(c echo.Context) error {
+		log := log.WithField("prefix", "HealthHandler")
+		log.Debug("health check request received")
+
+		healthMetric.Set(1)
+
+		response := map[string]string{
+			"status": "ok",
+		}
+		log.Debug("health check response sent")
+		return c.JSON(http.StatusOK, response)
+	})
+
+	e.GET("/ready", func(c echo.Context) error {
+		log := log.WithField("prefix", "ReadyHandler")
+		log.Debug("readiness check request received")
+
+		if err := dbConn.HealthCheck(); err != nil {
+			log.Errorf("database connection error: %v", err)
+			readyMetric.Set(0)
+			return c.JSON(http.StatusInternalServerError, map[string]string{
+				"status": "Database not ready",
+			})
+		}
+
+		readyMetric.Set(1)
+
+		response := map[string]string{
+			"status": "ready",
+		}
+		log.Debug("readiness check response sent")
+		return c.JSON(http.StatusOK, response)
+	})
+
+	// Metrics endpoint
+	e.GET("/metrics", echo.WrapHandler(promhttp.Handler()))
+
 	var existedPaths []string
 	for _, r := range e.Routes() {
 		existedPaths = append(existedPaths, r.Path)
 	}
 	p := prometheus.NewPrometheus("http", func(c echo.Context) bool {
+		// Skip metrics collection for health/ready/metrics endpoints and non-existent paths
+		if c.Path() == "/health" || c.Path() == "/ready" || c.Path() == "/metrics" {
+			return true
+		}
 		return !slices.Contains(existedPaths, c.Path())
 	})
 	e.Use(p.HandlerFunc)
