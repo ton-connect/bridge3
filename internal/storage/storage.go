@@ -3,7 +3,6 @@ package storage
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/callmedenchick/callmebridge/internal/models"
 )
