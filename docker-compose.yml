@@ -82,6 +82,39 @@ services:
       - bridge_network
     restart: unless-stopped
 
+  nats:
+    image: nats:2.10-alpine
+    command: ["-js", "-m", "8222"]
+    ports:
+      - "4222:4222" # server port
+      - "8222:8222" # monitoring port
+    networks:
+      - bridge_network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8222/healthz"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  bridge-nats:
+    build: .
+    environment:
+      PORT: 8081
+      NATS_URI: "nats://nats:4222"
+      # POSTGRES_URI: "nats://nats:4222"
+      CORS_ENABLE: "true"
+      HEARTBEAT_INTERVAL: 10
+      RPS_LIMIT: 1000
+      CONNECTIONS_LIMIT: 200
+    depends_on:
+      nats:
+        condition: service_healthy
+    networks:
+      - bridge_network
+    restart: unless-stopped
+    profiles:
+      - nats
+
 volumes:
   postgres_data:
 

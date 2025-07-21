@@ -81,7 +81,11 @@ func main() {
 	log.Info("Bridge is running")
 	config.LoadConfig()
 
-	dbConn, err := storage.NewStorage(config.Config.DbURI)
+	if config.Config.DbURI != "" && config.Config.NatsURI != "" {
+		log.Fatal("Both DbURI and NatsURI are set. Please use only one of them. Exit.")
+	}
+
+	dbConn, err := storage.NewStorage(config.Config.DbURI, config.Config.NatsURI)
 
 	if err != nil {
 		log.Fatalf("failed to create storage: %v", err)
