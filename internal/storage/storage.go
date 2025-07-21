@@ -2,6 +2,8 @@ package storage
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/callmedenchick/callmebridge/internal/models"
 )
@@ -12,9 +14,18 @@ type Storage interface {
 	HealthCheck() error
 }
 
-func NewStorage(dbURI string) (Storage, error) {
-	if dbURI != "" {
-		return NewPgStorage(dbURI)
+func NewStorage(pgURI, natsURI string) (Storage, error) {
+	if natsURI != "" && pgURI != "" {
+		return nil, fmt.Errorf("both NATS and PostgreSQL URIs are provided.")
 	}
+
+	if natsURI != "" {
+		return NewNatsStorage(natsURI)
+	}
+
+	if pgURI != "" {
+		return NewPgStorage(pgURI)
+	}
+
 	return NewMemStorage(), nil
 }

@@ -5,6 +5,7 @@
 *.so
 *.dylib
 callmebridge
+bridge
 .vscode/
 .DS_Store
 vendor/
@@ -22,5 +23,4 @@ vendor/
 .idea
 env.yaml
 
-# Bridge SDK test directory
 bridge-sdk/
