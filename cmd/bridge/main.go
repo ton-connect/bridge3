@@ -81,15 +81,28 @@ func main() {
 	log.Info("Bridge is running")
 	config.LoadConfig()
 
-	dbConn, err := storage.NewStorage(config.Config.DbURI)
+	storageConfig := storage.StorageConfig{
+		Type:               config.Config.StorageType,
+		PostgresURI:        config.Config.DbURI,
+		KafkaBrokers:       config.Config.KafkaBrokers,
+		KafkaTopic:         config.Config.KafkaTopic,
+		KafkaConsumerGroup: config.Config.KafkaConsumerGroup,
+	}
+
+	dbConn, err := storage.NewStorage(storageConfig)
 
 	if err != nil {
 		log.Fatalf("failed to create storage: %v", err)
 	}
-	if _, ok := dbConn.(*storage.MemStorage); ok {
-		log.Info("Using in-memory storage")
-	} else {
+
+	// Log which storage type is being used
+	switch storageConfig.Type {
+	case "kafka":
+		log.Info("Using Kafka storage")
+	case "postgres", "pg":
 		log.Info("Using PostgreSQL storage")
+	default:
+		log.Info("Using in-memory storage")
 	}
 
 	healthMetric.Set(1)
