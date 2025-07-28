@@ -144,7 +144,11 @@ func (s *KafkaStorage) HealthCheck() error {
 		log.Errorf("kafka health check failed: %v", err)
 		return err
 	}
-	defer conn.Close()
+	defer func() {
+		if closeErr := conn.Close(); closeErr != nil {
+			log.Errorf("failed to close connection: %v", closeErr)
+		}
+	}()
 
 	// Check if topic exists
 	partitions, err := conn.ReadPartitions(s.topic)
@@ -187,13 +191,16 @@ func (s *KafkaStorage) consumer() {
 			err = json.Unmarshal(message.Value, &kafkaMsg)
 			if err != nil {
 				log.Errorf("failed to unmarshal message: %v", err)
-				s.reader.CommitMessages(s.ctx, message)
+				if err := s.reader.CommitMessages(s.ctx, message); err != nil {
+					log.Errorf("failed to commit message: %v", err)
+				}
 				continue
 			}
-
 			// Check if message is still valid (TTL)
 			if time.Now().Unix() > kafkaMsg.Timestamp+kafkaMsg.TTL {
-				s.reader.CommitMessages(s.ctx, message)
+				if err := s.reader.CommitMessages(s.ctx, message); err != nil {
+					log.Errorf("failed to commit message: %v", err)
+				}
 				continue
 			}
 
@@ -222,7 +229,9 @@ func (s *KafkaStorage) consumer() {
 			}
 			s.messageMutex.Unlock()
 
-			s.reader.CommitMessages(s.ctx, message)
+			if err := s.reader.CommitMessages(s.ctx, message); err != nil {
+				log.Errorf("failed to commit message: %v", err)
+			}
 		}
 	}
 }
