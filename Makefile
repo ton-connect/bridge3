@@ -1,6 +1,6 @@
 GOFMT_FILES?=$$(find . -name '*.go' | grep -v vendor | grep -v yacc | grep -v .git)
 
-.PHONY: all imports fmt test test-bridge-sdk clean-bridge-sdk test-all integration-test run stop clean logs status
+.PHONY: all imports fmt test test-bridge-sdk clean-bridge-sdk test-all integration-test integration-test-memory integration-test-postgres integration-test-kafka run stop clean logs status
 
 all: imports fmt test
 
@@ -30,7 +30,19 @@ test-all: test test-bridge-sdk
 	@echo "All tests completed successfully!"
 
 integration-test:
-	@./scripts/integration-test.sh
+	@./scripts/integration-test.sh memory
+
+integration-test-memory:
+	@echo "🧪 Running integration tests with memory storage..."
+	@./scripts/integration-test.sh memory
+
+integration-test-postgres:
+	@echo "🧪 Running integration tests with PostgreSQL storage..."
+	@./scripts/integration-test.sh postgres
+
+integration-test-kafka:
+	@echo "🧪 Running integration tests with Kafka storage..."
+	@./scripts/integration-test.sh kafka
 
 run:
 	@echo "Starting bridge environment with nginx load balancer and 3 bridge instances..."
