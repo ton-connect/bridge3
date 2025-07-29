@@ -16,8 +16,13 @@ type KafkaMessage struct {
 	EventId   int64  `json:"event_id"`
 	Message   []byte `json:"message"`
 	ClientId  string `json:"client_id"`
-	TTL       int64  `json:"ttl"`
+	EndTime   int64  `json:"end_time"`
 	Timestamp int64  `json:"timestamp"`
+}
+
+type cachedMessage struct {
+	models.SseMessage
+	endTime int64
 }
 
 type KafkaStorage struct {
@@ -26,7 +31,7 @@ type KafkaStorage struct {
 	consumerGroup string
 	writer        *kafka.Writer
 	reader        *kafka.Reader
-	messages      map[string][]models.SseMessage // In-memory cache for quick access
+	messages      map[string][]cachedMessage // In-memory cache for quick access
 	messageMutex  sync.RWMutex
 	ctx           context.Context
 }
@@ -57,7 +62,7 @@ func NewKafkaStorage(brokers []string, topic, consumerGroup string) (*KafkaStora
 		consumerGroup: consumerGroup,
 		writer:        writer,
 		reader:        reader,
-		messages:      make(map[string][]models.SseMessage),
+		messages:      make(map[string][]cachedMessage),
 		ctx:           context.Background(),
 	}
 
@@ -76,7 +81,7 @@ func (s *KafkaStorage) Add(ctx context.Context, key string, ttl int64, mes model
 		EventId:   mes.EventId,
 		Message:   mes.Message,
 		ClientId:  key,
-		TTL:       ttl,
+		EndTime:   time.Now().Add(time.Duration(ttl) * time.Second).Unix(),
 		Timestamp: time.Now().Unix(),
 	}
 
@@ -101,9 +106,13 @@ func (s *KafkaStorage) Add(ctx context.Context, key string, ttl int64, mes model
 	// Also add to in-memory cache for immediate availability
 	s.messageMutex.Lock()
 	if s.messages[key] == nil {
-		s.messages[key] = make([]models.SseMessage, 0)
+		s.messages[key] = make([]cachedMessage, 0)
 	}
-	s.messages[key] = append(s.messages[key], mes)
+	cached := cachedMessage{
+		SseMessage: mes,
+		endTime:    kafkaMsg.EndTime,
+	}
+	s.messages[key] = append(s.messages[key], cached)
 	s.messageMutex.Unlock()
 
 	log.Debugf("message added to Kafka and cache for client %s", key)
@@ -116,12 +125,17 @@ func (s *KafkaStorage) GetMessages(ctx context.Context, keys []string, lastEvent
 	s.messageMutex.RLock()
 	defer s.messageMutex.RUnlock()
 
+	now := time.Now().Unix()
 	var result []models.SseMessage
 	for _, key := range keys {
 		if messages, exists := s.messages[key]; exists {
 			for _, msg := range messages {
+				// Skip expired messages
+				if now > msg.endTime {
+					continue
+				}
 				if msg.EventId > lastEventId {
-					result = append(result, msg)
+					result = append(result, msg.SseMessage)
 				}
 			}
 		}
@@ -188,8 +202,8 @@ func (s *KafkaStorage) consumer() {
 				}
 				continue
 			}
-			// Check if message is still valid (TTL)
-			if time.Now().Unix() > kafkaMsg.Timestamp+kafkaMsg.TTL {
+			// Check if message is still valid (not expired)
+			if time.Now().Unix() > kafkaMsg.EndTime {
 				if err := s.reader.CommitMessages(s.ctx, message); err != nil {
 					log.Errorf("failed to commit message: %v", err)
 				}
@@ -199,7 +213,7 @@ func (s *KafkaStorage) consumer() {
 			// Add to in-memory cache
 			s.messageMutex.Lock()
 			if s.messages[kafkaMsg.ClientId] == nil {
-				s.messages[kafkaMsg.ClientId] = make([]models.SseMessage, 0)
+				s.messages[kafkaMsg.ClientId] = make([]cachedMessage, 0)
 			}
 
 			sseMsg := models.SseMessage{
@@ -207,17 +221,22 @@ func (s *KafkaStorage) consumer() {
 				Message: kafkaMsg.Message,
 			}
 
+			cached := cachedMessage{
+				SseMessage: sseMsg,
+				endTime:    kafkaMsg.EndTime,
+			}
+
 			// Check if message already exists to avoid duplicates
 			exists := false
 			for _, existingMsg := range s.messages[kafkaMsg.ClientId] {
-				if existingMsg.EventId == sseMsg.EventId {
+				if existingMsg.EventId == cached.EventId {
 					exists = true
 					break
 				}
 			}
 
 			if !exists {
-				s.messages[kafkaMsg.ClientId] = append(s.messages[kafkaMsg.ClientId], sseMsg)
+				s.messages[kafkaMsg.ClientId] = append(s.messages[kafkaMsg.ClientId], cached)
 			}
 			s.messageMutex.Unlock()
 
@@ -233,7 +252,7 @@ func (s *KafkaStorage) cleaner() {
 	log := log.WithField("prefix", "KafkaStorage.cleaner")
 	log.Info("starting Kafka storage cleaner")
 
-	ticker := time.NewTicker(time.Minute)
+	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
 	for {
@@ -253,15 +272,11 @@ func (s *KafkaStorage) cleanExpiredMessages() {
 	s.messageMutex.Lock()
 	defer s.messageMutex.Unlock()
 
-	// For simplicity, we'll clean messages older than 1 hour
-	// In a real implementation, you might want to store TTL info per message
-	cutoffTime := time.Now().Add(-time.Hour)
-	cutoffEventId := cutoffTime.Unix() * 1000 // Assuming eventId is timestamp-based
-
+	now := time.Now().Unix()
 	for clientId, messages := range s.messages {
-		var validMessages []models.SseMessage
+		var validMessages []cachedMessage
 		for _, msg := range messages {
-			if msg.EventId > cutoffEventId {
+			if now <= msg.endTime {
 				validMessages = append(validMessages, msg)
 			}
 		}
