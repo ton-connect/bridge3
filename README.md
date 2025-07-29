@@ -11,6 +11,30 @@ make build
 ./callmebridge
 ```
 
+### PostgreSQL Storage
+```bash
+# Start PostgreSQL and set environment
+export STORAGE_TYPE="postgres"
+export POSTGRES_URI="postgres://user:pass@localhost/bridge"
+./callmebridge
+```
+
+### Kafka Storage
+```bash
+# Start Kafka (using Docker Compose)
+docker-compose -f docker-compose.kafka.yml up -d kafka
+
+# Or use the provided script
+./scripts/run-with-kafka.sh
+```
+
+### Full Multi-Instance Setup with Kafka
+```bash
+# Start the entire stack with load balancer
+docker-compose -f docker-compose.kafka.yml up
+# Access via http://localhost:8080 (nginx load balancer)
+```
+
 ## 📋Requirements
 
 - Go 1.23+
@@ -23,8 +47,55 @@ Configure using environment variables:
 
 ```bash
 PORT=8081                    # Server port
-POSTGRES_URI="postgres://user:pass@host/dbname"  # Database connection
+
+# Storage Configuration
+STORAGE_TYPE="memory"        # Storage type: memory, postgres, kafka
+POSTGRES_URI="postgres://user:pass@host/dbname"  # PostgreSQL connection (for postgres storage)
+
+# Kafka Configuration (for kafka storage)
+KAFKA_BROKERS="localhost:9092,localhost:9093"  # Comma-separated Kafka broker addresses
+KAFKA_TOPIC="bridge-messages"                  # Kafka topic name (default: bridge-messages)
+KAFKA_CONSUMER_GROUP="bridge-consumer"         # Kafka consumer group (default: bridge-consumer)
+
+# Other Configuration
+WEBHOOK_URL=""               # Webhook URL for message forwarding
+COPY_TO_URL=""              # URL to copy messages to
+CORS_ENABLE=false           # Enable CORS
+HEARTBEAT_INTERVAL=10       # Heartbeat interval in seconds
+RPS_LIMIT=1000              # Rate limit (requests per second)
+CONNECTIONS_LIMIT=200       # Maximum concurrent connections
+SELF_SIGNED_TLS=false       # Use self-signed TLS certificate
 ```
+
+### Storage Types
+
+**Memory Storage** (default)
+- Fast, in-memory storage
+- Data is lost on restart
+- Best for development and testing
+
+**PostgreSQL Storage**
+- Persistent storage with automatic migrations
+- Supports high availability setups
+- Automatic cleanup of expired messages
+
+### Kafka Storage
+
+**Kafka Storage** uses modern **KRaft mode** (Kafka Raft metadata mode) instead of Zookeeper:
+
+✅ **KRaft Benefits:**
+- **Simpler architecture**: No separate Zookeeper cluster needed
+- **Faster startup**: Reduced coordination overhead
+- **Better performance**: Lower latency for metadata operations
+- **Easier scaling**: Single service to manage and scale
+- **Production-ready**: Available since Kafka 3.3.0+
+
+**Features:**
+- Distributed, scalable message storage
+- Hybrid approach: messages stored in Kafka with in-memory caching
+- Automatic message expiration and cleanup
+- Supports multiple bridge instances
+- Built-in health checks and monitoring
 
 ## 🛠️API Endpoints
 

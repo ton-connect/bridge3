@@ -9,6 +9,10 @@ import (
 var Config = struct {
 	Port                  int      `env:"PORT" envDefault:"8081"`
 	DbURI                 string   `env:"POSTGRES_URI"`
+	KafkaBrokers          []string `env:"KAFKA_BROKERS" envSeparator:","`
+	KafkaTopic            string   `env:"KAFKA_TOPIC" envDefault:"bridge-messages"`
+	KafkaConsumerGroup    string   `env:"KAFKA_CONSUMER_GROUP" envDefault:"bridge-consumer"`
+	StorageType           string   `env:"STORAGE_TYPE" envDefault:"memory"` // memory, postgres, kafka
 	WebhookURL            string   `env:"WEBHOOK_URL"`
 	CopyToURL             string   `env:"COPY_TO_URL"`
 	CorsEnable            bool     `env:"CORS_ENABLE"`
