@@ -29,13 +29,10 @@ type KafkaStorage struct {
 	messages      map[string][]models.SseMessage // In-memory cache for quick access
 	messageMutex  sync.RWMutex
 	ctx           context.Context
-	cancel        context.CancelFunc
 }
 
 func NewKafkaStorage(brokers []string, topic, consumerGroup string) (*KafkaStorage, error) {
 	log := log.WithField("prefix", "NewKafkaStorage")
-
-	ctx, cancel := context.WithCancel(context.Background())
 
 	writer := &kafka.Writer{
 		Addr:         kafka.TCP(brokers...),
@@ -61,8 +58,7 @@ func NewKafkaStorage(brokers []string, topic, consumerGroup string) (*KafkaStora
 		writer:        writer,
 		reader:        reader,
 		messages:      make(map[string][]models.SseMessage),
-		ctx:           ctx,
-		cancel:        cancel,
+		ctx:           context.Background(),
 	}
 
 	// Start background goroutines
@@ -178,10 +174,6 @@ func (s *KafkaStorage) consumer() {
 		default:
 			message, err := s.reader.FetchMessage(s.ctx)
 			if err != nil {
-				if err == context.Canceled {
-					log.Info("consumer context canceled")
-					return
-				}
 				log.Errorf("failed to fetch message: %v", err)
 				time.Sleep(time.Second)
 				continue
@@ -282,29 +274,4 @@ func (s *KafkaStorage) cleanExpiredMessages() {
 	}
 
 	log.Debug("expired messages cleaned from cache")
-}
-
-// Close gracefully shuts down the Kafka storage
-func (s *KafkaStorage) Close() error {
-	log := log.WithField("prefix", "KafkaStorage.Close")
-	log.Info("closing Kafka storage")
-
-	s.cancel()
-
-	var errors []error
-
-	if err := s.writer.Close(); err != nil {
-		errors = append(errors, fmt.Errorf("failed to close writer: %w", err))
-	}
-
-	if err := s.reader.Close(); err != nil {
-		errors = append(errors, fmt.Errorf("failed to close reader: %w", err))
-	}
-
-	if len(errors) > 0 {
-		return fmt.Errorf("errors while closing Kafka storage: %v", errors)
-	}
-
-	log.Info("Kafka storage closed successfully")
-	return nil
 }
