@@ -75,14 +75,14 @@ stop:
 		exit 1; \
 	fi
 
+stop-memory:
+	@$(MAKE) stop STORAGE=memory
+
 stop-postgres:
 	@$(MAKE) stop STORAGE=postgres
 
 stop-valkey:
 	@$(MAKE) stop STORAGE=valkey
-
-stop-memory:
-	@$(MAKE) stop STORAGE=memory
 
 clean:
 	@echo "Cleaning up bridge environment and volumes using $(DOCKER_COMPOSE_FILE)..."
@@ -98,14 +98,14 @@ clean:
 		docker system prune -f; \
 	fi
 
+clean-memory:
+	@$(MAKE) clean STORAGE=memory
+
 clean-postgres:
 	@$(MAKE) clean STORAGE=postgres
 
 clean-valkey:
 	@$(MAKE) clean STORAGE=valkey
-
-clean-memory:
-	@$(MAKE) clean STORAGE=memory
 
 logs:
 	@if command -v docker-compose >/dev/null 2>&1; then \
@@ -117,14 +117,14 @@ logs:
 		exit 1; \
 	fi
 
+logs-memory:
+	@$(MAKE) logs STORAGE=memory
+
 logs-postgres:
 	@$(MAKE) logs STORAGE=postgres
 
 logs-valkey:
 	@$(MAKE) logs STORAGE=valkey
-
-logs-memory:
-	@$(MAKE) logs STORAGE=memory
 
 status:
 	@if command -v docker-compose >/dev/null 2>&1; then \
@@ -136,14 +136,14 @@ status:
 		exit 1; \
 	fi
 
+status-memory:
+	@$(MAKE) status STORAGE=memory
+
 status-postgres:
 	@$(MAKE) status STORAGE=postgres
 
 status-valkey:
 	@$(MAKE) status STORAGE=valkey
-
-status-memory:
-	@$(MAKE) status STORAGE=memory
 
 help:
 	@echo "Available storage backends:"

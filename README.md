@@ -11,36 +11,13 @@ make build
 ./callmebridge
 ```
 
+Use `make help` to see all available commands and storage options.
+
 ## 📋Requirements
 
 - Go 1.23+
 - PostgreSQL or Valkey/Redis (optional, depending on storage backend)
 - Node.js & npm (for testing)
-
-## 🐳 Quick Start with Docker
-
-### Valkey Storage (Default)
-```bash
-git clone https://github.com/callmedenchick/callmebridge
-cd callmebridge
-make run-valkey
-```
-
-### PostgreSQL Storage
-```bash
-make run-postgres
-```
-
-### Memory Storage (No Persistence)
-```bash
-make run-memory
-```
-
-The bridge will be available at `http://localhost:8080` with nginx load balancing across 3 instances.
-
-## 🔧 Make Commands
-
-Use `make help` to see all available commands and storage options.
 
 ## ⚙️Configuration
 
@@ -56,7 +33,7 @@ RPS_LIMIT=1000              # Rate limit per second
 CONNECTIONS_LIMIT=200        # Maximum concurrent connections
 ```
 
-### Storage
+## 💾Storage
 
 - **Valkey**: Redis-compatible storage for high performance
 - **PostgreSQL**: Relational database with full persistence

@@ -40,7 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        storage: [valkey, postgres, memory]
+        storage: [memory, valkey, postgres]
     
     steps:
     - uses: actions/checkout@v4
