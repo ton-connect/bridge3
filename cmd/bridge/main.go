@@ -81,7 +81,24 @@ func main() {
 	log.Info("Bridge is running")
 	config.LoadConfig()
 
-	dbConn, err := storage.NewStorage(config.Config.DbURI, config.Config.RedisURI)
+	dbURI := ""
+	storageType := "memory"
+
+	if config.Config.PostgresURI != "" {
+		dbURI = config.Config.PostgresURI
+		storageType = "postgres"
+	}
+
+	if config.Config.ValkeyURI != "" {
+		dbURI = config.Config.ValkeyURI
+		storageType = "valkey"
+	}
+
+	if config.Config.ValkeyURI != "" && config.Config.PostgresURI != "" {
+		log.Warn("Both VALKEY_URI and POSTGRES_URI are set. Using Valkey/Redis as primary storage.")
+	}
+
+	dbConn, err := storage.NewStorage(storageType, dbURI)
 
 	if err != nil {
 		log.Fatalf("failed to create storage: %v", err)

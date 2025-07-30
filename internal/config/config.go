@@ -8,8 +8,8 @@ import (
 
 var Config = struct {
 	Port                  int      `env:"PORT" envDefault:"8081"`
-	DbURI                 string   `env:"POSTGRES_URI"`
-	RedisURI              string   `env:"REDIS_URI"`
+	PostgresURI           string   `env:"POSTGRES_URI"`
+	ValkeyURI             string   `env:"VALKEY_URI"`
 	WebhookURL            string   `env:"WEBHOOK_URL"`
 	CopyToURL             string   `env:"COPY_TO_URL"`
 	CorsEnable            bool     `env:"CORS_ENABLE"`

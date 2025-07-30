@@ -17,14 +17,25 @@ type ValkeyStorage struct {
 }
 
 // NewValkeyStorage creates a new Valkey storage instance
-func NewValkeyStorage(addr, password string, db int) (*ValkeyStorage, error) {
+func NewValkeyStorage(valkeyURI string) (*ValkeyStorage, error) {
 	log := log.WithField("prefix", "NewValkeyStorage")
 
-	rdb := redis.NewClient(&redis.Options{
-		Addr:     addr,     // default is "localhost:6379"
-		Password: password, // no password set
-		DB:       db,       // default DB
-	})
+	opts := &redis.Options{
+		Addr:     "localhost:6379",
+		Password: "",
+		DB:       0,
+	}
+
+	if valkeyURI != "" && valkeyURI != "redis://" && valkeyURI != "valkey://" {
+		parsedOpts, err := redis.ParseURL(valkeyURI)
+		if err != nil {
+			log.Errorf("failed to parse Valkey URI: %v", err)
+			return nil, err
+		}
+		opts = parsedOpts
+	}
+
+	rdb := redis.NewClient(opts)
 
 	// Test connection
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -80,7 +91,6 @@ func (s *ValkeyStorage) worker() {
 func (s *ValkeyStorage) Add(ctx context.Context, key string, ttl int64, mes models.SseMessage) error {
 	log := log.WithField("prefix", "ValkeyStorage.Add")
 
-	// Serialize the message
 	messageData, err := json.Marshal(mes)
 	if err != nil {
 		log.Errorf("failed to marshal message: %v", err)
@@ -102,6 +112,7 @@ func (s *ValkeyStorage) Add(ctx context.Context, key string, ttl int64, mes mode
 		return err
 	}
 
+	// TODO Maybe redundant?
 	// Set expiration on the key itself (as a safety net)
 	s.client.Expire(ctx, clientKey, time.Duration(ttl+60)*time.Second)
 
@@ -168,9 +179,4 @@ func (s *ValkeyStorage) HealthCheck() error {
 
 	log.Info("Valkey is healthy")
 	return nil
-}
-
-// Close closes the Valkey connection
-func (s *ValkeyStorage) Close() error {
-	return s.client.Close()
 }
