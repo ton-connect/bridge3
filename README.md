@@ -14,8 +14,33 @@ make build
 ## 📋Requirements
 
 - Go 1.23+
-- PostgreSQL (optional)
+- PostgreSQL or Valkey/Redis (optional, depending on storage backend)
 - Node.js & npm (for testing)
+
+## 🐳 Quick Start with Docker
+
+### Valkey Storage (Default)
+```bash
+git clone https://github.com/callmedenchick/callmebridge
+cd callmebridge
+make run-valkey
+```
+
+### PostgreSQL Storage
+```bash
+make run-postgres
+```
+
+### Memory Storage (No Persistence)
+```bash
+make run-memory
+```
+
+The bridge will be available at `http://localhost:8080` with nginx load balancing across 3 instances.
+
+## 🔧 Make Commands
+
+Use `make help` to see all available commands and storage options.
 
 ## ⚙️Configuration
 
@@ -23,8 +48,25 @@ Configure using environment variables:
 
 ```bash
 PORT=8081                    # Server port
-POSTGRES_URI="postgres://user:pass@host/dbname"  # Database connection
+VALKEY_URI="valkey://host:6379"     # Valkey connection string
+POSTGRES_URI="postgres://user:pass@host/dbname"  # PostgreSQL connection
+CORS_ENABLE=true             # Enable CORS headers
+HEARTBEAT_INTERVAL=10        # Heartbeat interval in seconds
+RPS_LIMIT=1000              # Rate limit per second
+CONNECTIONS_LIMIT=200        # Maximum concurrent connections
 ```
+
+### Storage
+
+- **Valkey**: Redis-compatible storage for high performance
+- **PostgreSQL**: Relational database with full persistence
+- **Memory**: In-memory storage (no persistence, fastest for testing)
+
+**Storage Selection Logic:**
+- If `POSTGRES_URI` is set → PostgreSQL storage
+- If `VALKEY_URI` is set → Valkey storage  
+- If both are set → Valkey takes precedence
+- If neither is set → Memory storage
 
 ## 🛠️API Endpoints
 
