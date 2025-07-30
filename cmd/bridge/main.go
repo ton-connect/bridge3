@@ -81,13 +81,15 @@ func main() {
 	log.Info("Bridge is running")
 	config.LoadConfig()
 
-	dbConn, err := storage.NewStorage(config.Config.DbURI)
+	dbConn, err := storage.NewStorage(config.Config.DbURI, config.Config.RedisURI)
 
 	if err != nil {
 		log.Fatalf("failed to create storage: %v", err)
 	}
 	if _, ok := dbConn.(*storage.MemStorage); ok {
 		log.Info("Using in-memory storage")
+	} else if _, ok := dbConn.(*storage.ValkeyStorage); ok {
+		log.Info("Using Valkey/Redis storage")
 	} else {
 		log.Info("Using PostgreSQL storage")
 	}
