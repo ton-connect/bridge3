@@ -3,7 +3,7 @@
 # Script to run integration tests with bridge-sdk
 set -e
 
-STORAGE=${STORAGE:-memory}
+STORAGE=${STORAGE:-none} # Supported: postgres, valkey, memory
 BRIDGE_PORT=${PORT:-8081}
 BRIDGE_URL=${BRIDGE_URL:-http://localhost:$BRIDGE_PORT}
 BRIDGE_BINARY="./callmebridge"
@@ -30,7 +30,7 @@ case $STORAGE in
             echo "⏳ Waiting for PostgreSQL to be ready..."
             timeout 30 bash -c 'until docker exec postgres-test pg_isready -U bridge_user -d bridge; do sleep 1; done'
         fi
-        export POSTGRES_URI="postgres://bridge_user:bridge_password@localhost:5432/bridge?sslmode=disable"
+        export POSTGRES_URI="postgres://bridge_user:bridge_password@postgres:5432/bridge?sslmode=disable"
         ;;
     valkey)
         echo "🔄 Setting up Valkey..."
@@ -45,7 +45,7 @@ case $STORAGE in
             echo "⏳ Waiting for Valkey to be ready..."
             timeout 30 bash -c 'until docker exec valkey-test valkey-cli ping | grep -q PONG; do sleep 1; done'
         fi
-        export VALKEY_URI="valkey://localhost:6379"
+        export VALKEY_URI="redis://localhost:6379"
         ;;
     memory)
         echo "🧠 Using in-memory storage..."

@@ -24,13 +24,13 @@ Use `make help` to see all available commands and storage options.
 Configure using environment variables:
 
 ```bash
-PORT=8081                    # Server port
-VALKEY_URI="valkey://host:6379"     # Valkey connection string
+PORT=8081                       # Server port
+VALKEY_URI="valkey://host:6379" # Valkey connection string
 POSTGRES_URI="postgres://user:pass@host/dbname"  # PostgreSQL connection
-CORS_ENABLE=true             # Enable CORS headers
-HEARTBEAT_INTERVAL=10        # Heartbeat interval in seconds
-RPS_LIMIT=1000              # Rate limit per second
-CONNECTIONS_LIMIT=200        # Maximum concurrent connections
+CORS_ENABLE=true                # Enable CORS headers
+HEARTBEAT_INTERVAL=10           # Heartbeat interval in seconds
+RPS_LIMIT=1000                  # Rate limit per second
+CONNECTIONS_LIMIT=200           # Maximum concurrent connections
 ```
 
 ## 💾Storage

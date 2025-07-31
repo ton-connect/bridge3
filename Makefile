@@ -52,7 +52,7 @@ run:
 		echo "Please install Docker Desktop from https://www.docker.com/products/docker-desktop"; \
 		exit 1; \
 	fi
-	@echo "Environment started! Access the load balancer at http://localhost:8080"
+	@echo "Environment started! Access the load bridge at http://localhost:8081"
 	@echo "Use 'make logs' to view logs, 'make stop' to stop services"
 
 run-memory:
@@ -63,6 +63,9 @@ run-postgres:
 
 run-valkey:
 	@$(MAKE) run STORAGE=valkey
+
+run-nginx:
+	@$(MAKE) run STORAGE=postgres DOCKER_COMPOSE_FILE=docker-compose.nginx.yml
 
 stop:
 	@echo "Stopping bridge environment using $(DOCKER_COMPOSE_FILE)..."
