@@ -14,14 +14,14 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ton-connect/bridge3/internal/config"
-	"github.com/ton-connect/bridge3/internal/models"
-	"github.com/ton-connect/bridge3/internal/storage"
-	"github.com/ton-connect/bridge3/internal/utils"
 	"github.com/labstack/echo/v4"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	log "github.com/sirupsen/logrus"
+	"github.com/ton-connect/bridge3/internal/config"
+	"github.com/ton-connect/bridge3/internal/models"
+	"github.com/ton-connect/bridge3/internal/storage"
+	"github.com/ton-connect/bridge3/internal/utils"
 )
 
 var (

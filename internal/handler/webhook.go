@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/ton-connect/bridge3/internal/config"
 	log "github.com/sirupsen/logrus"
+	"github.com/ton-connect/bridge3/internal/config"
 )
 
 type WebhookData struct {

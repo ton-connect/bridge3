@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/ton-connect/bridge3/internal/models"
 	"github.com/redis/go-redis/v9"
 	log "github.com/sirupsen/logrus"
+	"github.com/ton-connect/bridge3/internal/models"
 )
 
 type ValkeyStorage struct {
