@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/callmedenchick/callmebridge/internal/models"
+	"github.com/ton-connect/bridge3/internal/models"
 )
 
 type Storage interface {

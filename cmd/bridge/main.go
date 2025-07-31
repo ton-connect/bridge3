@@ -7,12 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/callmedenchick/callmebridge/internal/config"
-	"github.com/callmedenchick/callmebridge/internal/handler"
-	bridge_middleware "github.com/callmedenchick/callmebridge/internal/middleware"
-	"github.com/callmedenchick/callmebridge/internal/storage"
+	"github.com/ton-connect/bridge3/internal/config"
+	"github.com/ton-connect/bridge3/internal/handler"
+	bridge_middleware "github.com/ton-connect/bridge3/internal/middleware"
+	"github.com/ton-connect/bridge3/internal/storage"
 
-	"github.com/callmedenchick/callmebridge/internal/utils"
 	"github.com/labstack/echo-contrib/prometheus"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -20,6 +19,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
+	"github.com/ton-connect/bridge3/internal/utils"
 	"golang.org/x/exp/slices"
 	"golang.org/x/time/rate"
 )

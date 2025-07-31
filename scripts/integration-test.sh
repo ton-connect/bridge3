@@ -5,7 +5,7 @@ set -e
 
 BRIDGE_PORT=${PORT:-8081}
 BRIDGE_URL=${BRIDGE_URL:-http://localhost:$BRIDGE_PORT}
-BRIDGE_BINARY="./callmebridge"
+BRIDGE_BINARY="./bridge"
 
 echo "🚀 Starting integration tests with bridge-sdk..."
 echo "Bridge URL: $BRIDGE_URL"

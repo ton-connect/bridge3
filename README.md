@@ -5,10 +5,10 @@
 ## 🚀Quick Start
 
 ```bash
-git clone https://github.com/callmedenchick/callmebridge
-cd callmebridge
+git clone https://github.com/ton-connect/bridge3
+cd bridge
 make build
-./callmebridge
+./bridge
 ```
 
 Use `make help` to see all available commands and storage options.
@@ -60,7 +60,7 @@ CONNECTIONS_LIMIT=200           # Maximum concurrent connections
 
 ## 📊Monitoring
 
-CallMeBridge provides comprehensive monitoring capabilities:
+Bridge provides comprehensive monitoring capabilities:
 
 ### Prometheus Metrics
 

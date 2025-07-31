@@ -4,9 +4,9 @@ import (
 	"context"
 	"sync"
 
-	"github.com/callmedenchick/callmebridge/internal/models"
-	"github.com/callmedenchick/callmebridge/internal/storage"
 	log "github.com/sirupsen/logrus"
+	"github.com/ton-connect/bridge3/internal/models"
+	"github.com/ton-connect/bridge3/internal/storage"
 )
 
 type Session struct {

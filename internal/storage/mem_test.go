@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/callmedenchick/callmebridge/internal/models"
+	"github.com/ton-connect/bridge3/internal/models"
 )
 
 func newMessage(expire time.Time, i int) message {
