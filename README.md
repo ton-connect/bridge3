@@ -2,6 +2,10 @@
 
 [HTTP bridge](https://github.com/ton-connect/docs/blob/main/bridge.md) implementation for TON Connect 2.0.
 
+
+> ⚠️ This bridge is currently under development. **Do not use in production** until the first stable release.
+
+
 ## 🚀Quick Start
 
 ```bash
