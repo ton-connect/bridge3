@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/callmedenchick/callmebridge/internal/models"
 )
@@ -12,9 +13,15 @@ type Storage interface {
 	HealthCheck() error
 }
 
-func NewStorage(dbURI string) (Storage, error) {
-	if dbURI != "" {
-		return NewPgStorage(dbURI)
+func NewStorage(storageType string, uri string) (Storage, error) {
+	switch storageType {
+	case "valkey", "redis":
+		return NewValkeyStorage(uri)
+	case "postgres":
+		return NewPgStorage(uri)
+	case "memory":
+		return NewMemStorage(), nil
+	default:
+		return nil, fmt.Errorf("unsupported storage type: %s", storageType)
 	}
-	return NewMemStorage(), nil
 }

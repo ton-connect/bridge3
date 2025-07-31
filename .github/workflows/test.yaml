@@ -20,6 +20,9 @@ jobs:
 
   integration:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        storage: [memory, valkey, postgres]
     
     steps:
     - uses: actions/checkout@v4
@@ -50,8 +53,10 @@ jobs:
     - name: Run unit tests
       run: make test
 
-    - name: Build bridge
-      run: make build
-
     - name: Run integration tests
-      run: make integration-test
+      run: |
+        STORAGE=${{ matrix.storage }} make run
+        make integration-test
+        make stop
+      env:
+        STORAGE: ${{ matrix.storage }}

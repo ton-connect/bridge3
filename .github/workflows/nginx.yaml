@@ -43,7 +43,7 @@ jobs:
       run: make build
 
     - name: Start bridge environment
-      run: make run
+      run: make run-nginx
 
     - name: Wait for services to be ready
       run: |
@@ -56,7 +56,7 @@ jobs:
         echo "Services are ready!"
 
     - name: Check service status
-      run: make status
+      run: make status-postgres
 
     - name: Run bridge-sdk tests
       env:
@@ -67,12 +67,12 @@ jobs:
       if: failure()
       run: |
         echo "=== Docker Compose Logs ==="
-        make logs
+        make logs-postgres
         echo "=== Docker Container Status ==="
         docker ps -a
 
     - name: Cleanup
       if: always()
       run: |
-        make stop
+        make stop-postgres
         docker system prune -f

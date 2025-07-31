@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  bridge:
+    build: .
+    environment:
+      PORT: 8081
+      CORS_ENABLE: "true"
+      HEARTBEAT_INTERVAL: 10
+      RPS_LIMIT: 1000
+      CONNECTIONS_LIMIT: 200
+    networks:
+      - bridge_network
+    restart: unless-stopped
+
+networks:
+  bridge_network:
+    driver: bridge
