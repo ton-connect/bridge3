@@ -4,8 +4,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/callmedenchick/callmebridge/internal/models"
-	"github.com/callmedenchick/callmebridge/internal/storage"
+	"github.com/https://github.com/ton-connect/bridge3/internal/models"
+	"github.com/https://github.com/ton-connect/bridge3/internal/storage"
 	log "github.com/sirupsen/logrus"
 )
 

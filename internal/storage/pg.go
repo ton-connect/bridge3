@@ -6,10 +6,10 @@ import (
 	"errors"
 	"time"
 
-	"github.com/callmedenchick/callmebridge/internal/models"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
+	"github.com/https://github.com/ton-connect/bridge3/internal/models"
 	"github.com/jackc/pgx/v4/pgxpool"
 	log "github.com/sirupsen/logrus"
 )

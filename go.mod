@@ -1,4 +1,4 @@
-module github.com/callmedenchick/callmebridge
+module github.com/ton-connect/bridge
 
 go 1.23.0
 

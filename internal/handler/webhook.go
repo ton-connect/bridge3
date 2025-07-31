@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/callmedenchick/callmebridge/internal/config"
+	"github.com/https://github.com/ton-connect/bridge3/internal/config"
 	log "github.com/sirupsen/logrus"
 )
 

@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/callmedenchick/callmebridge/internal/models"
+	"github.com/https://github.com/ton-connect/bridge3/internal/models"
 )
 
 type MemStorage struct {
