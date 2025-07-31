@@ -7,12 +7,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/https://github.com/ton-connect/bridge3/internal/config"
-	"github.com/https://github.com/ton-connect/bridge3/internal/handler"
-	bridge_middleware "github.com/https://github.com/ton-connect/bridge3/internal/middleware"
-	"github.com/https://github.com/ton-connect/bridge3/internal/storage"
+	"github.com/ton-connect/bridge3/internal/config"
+	"github.com/ton-connect/bridge3/internal/handler"
+	bridge_middleware "github.com/ton-connect/bridge3/internal/middleware"
+	"github.com/ton-connect/bridge3/internal/storage"
 
-	"github.com/https://github.com/ton-connect/bridge3/internal/utils"
+	"github.com/ton-connect/bridge3/internal/utils"
 	"github.com/labstack/echo-contrib/prometheus"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"

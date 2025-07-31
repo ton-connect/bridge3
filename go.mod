@@ -1,4 +1,4 @@
-module github.com/ton-connect/bridge
+module github.com/ton-connect/bridge3
 
 go 1.23.0
 

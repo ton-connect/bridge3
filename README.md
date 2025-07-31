@@ -5,7 +5,7 @@
 ## 🚀Quick Start
 
 ```bash
-git clone https://github.com/https://github.com/ton-connect/bridge3
+git clone https://github.com/ton-connect/bridge3
 cd bridge
 make build
 ./bridge
