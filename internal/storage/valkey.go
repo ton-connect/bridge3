@@ -20,19 +20,10 @@ type ValkeyStorage struct {
 func NewValkeyStorage(valkeyURI string) (*ValkeyStorage, error) {
 	log := log.WithField("prefix", "NewValkeyStorage")
 
-	opts := &redis.Options{
-		Addr:     "localhost:6379",
-		Password: "",
-		DB:       0,
-	}
-
-	if valkeyURI != "" && valkeyURI != "redis://" && valkeyURI != "valkey://" {
-		parsedOpts, err := redis.ParseURL(valkeyURI)
-		if err != nil {
-			log.Errorf("failed to parse Valkey URI: %v", err)
-			return nil, err
-		}
-		opts = parsedOpts
+	opts, err := redis.ParseURL(valkeyURI)
+	if err != nil {
+		log.Errorf("failed to parse Valkey URI: %v", err)
+		return nil, err
 	}
 
 	rdb := redis.NewClient(opts)
@@ -41,7 +32,7 @@ func NewValkeyStorage(valkeyURI string) (*ValkeyStorage, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	_, err := rdb.Ping(ctx).Result()
+	_, err = rdb.Ping(ctx).Result()
 	if err != nil {
 		log.Errorf("failed to connect to Valkey: %v", err)
 		return nil, err
@@ -59,6 +50,7 @@ func NewValkeyStorage(valkeyURI string) (*ValkeyStorage, error) {
 	return storage, nil
 }
 
+// TODO consider to remove it
 // worker runs periodically to clean up expired messages
 func (s *ValkeyStorage) worker() {
 	log := log.WithField("prefix", "ValkeyStorage.worker")
