@@ -106,7 +106,7 @@ services:
       dockerfile: Dockerfile.integration
     container_name: bridge-integration
     environment:
-      BRIDGE_URL: "http://bridge-magic.local:8081/bridge"
+      BRIDGE_URL: "http://bridge-magic.local:8080/bridge"
       # Add any other environment variables your integration needs
     depends_on:
       bridge1:
@@ -123,6 +123,7 @@ services:
     dns:
       - 172.20.0.10  # dnsmasq IP
     command: ["/bin/bash", "-c", "make test-bridge-sdk"]
+    # command: ["/bin/bash", "-c", "tail -f /dev/null"]
 
 volumes:
   valkey_data:
