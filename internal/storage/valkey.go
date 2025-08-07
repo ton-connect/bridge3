@@ -152,7 +152,10 @@ func (s *ValkeyStorage) Sub(ctx context.Context, keys []string, lastEventId int6
 		go s.handlePubSub()
 	} else {
 		// Subscribe to additional channels
-		s.pubSubConn.Subscribe(ctx, channels...)
+		err := s.pubSubConn.Subscribe(ctx, channels...)
+		if err != nil {
+			log.Errorf("failed to subscribe to additional channels: %v", err)
+		}
 	}
 
 	log.Debugf("subscribed to channels for keys: %v", keys)

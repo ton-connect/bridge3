@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/ton-connect/bridge3/internal/models"
 	"github.com/ton-connect/bridge3/internal/storage"
 )
@@ -36,12 +37,13 @@ func (s *Session) GetMessages() <-chan models.SseMessage {
 
 // Close stops the session and cleans up resources
 func (s *Session) Close() {
+	log := log.WithField("prefix", "Session.Close")
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
 	err := s.storage.Unsub(context.Background(), s.ClientIds)
 	if err != nil {
-		// TODO log errors here
+		log.Errorf("failed to unsubscribe from storage: %v", err)
 	}
 
 	close(s.Closer)
