@@ -135,7 +135,7 @@ func (h *handler) EventRegistrationHandler(c echo.Context) error {
 	notify := ctx.Done()
 	go func() {
 		<-notify
-		close(session.Closer)
+		session.Close()
 		h.removeConnection(session)
 		log.Infof("connection: %v closed with error %v", session.ClientIds, ctx.Err())
 	}()
@@ -145,7 +145,7 @@ func (h *handler) EventRegistrationHandler(c echo.Context) error {
 loop:
 	for {
 		select {
-		case msg, ok := <-session.MessageCh:
+		case msg, ok := <-session.GetMessages():
 			if !ok {
 				log.Errorf("can't read from channel")
 				break loop
@@ -251,16 +251,8 @@ func (h *handler) SendMessageHandler(c echo.Context) error {
 		EventId: h.nextID(),
 		Message: mes,
 	}
-	h.Mux.RLock()
-	s, ok := h.Connections[toId[0]]
-	h.Mux.RUnlock()
-	if ok {
-		s.mux.Lock()
-		for _, ses := range s.Sessions {
-			ses.AddMessageToQueue(ctx, sseMessage)
-		}
-		s.mux.Unlock()
-	}
+
+	// Send message only to storage - pub-sub will handle distribution
 	go func() {
 		log := log.WithField("prefix", "SendMessageHandler.storage.Pub")
 		err = h.storage.Pub(context.Background(), toId[0], ttl, sseMessage)
