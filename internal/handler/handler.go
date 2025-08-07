@@ -262,8 +262,8 @@ func (h *handler) SendMessageHandler(c echo.Context) error {
 		s.mux.Unlock()
 	}
 	go func() {
-		log := log.WithField("prefix", "SendMessageHandler.storge.Add")
-		err = h.storage.Add(context.Background(), toId[0], ttl, sseMessage)
+		log := log.WithField("prefix", "SendMessageHandler.storage.Pub")
+		err = h.storage.Pub(context.Background(), toId[0], ttl, sseMessage)
 		if err != nil {
 			log.Errorf("db error: %v", err)
 		}

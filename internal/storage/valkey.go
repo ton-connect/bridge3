@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
+	"sync"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -13,7 +13,10 @@ import (
 )
 
 type ValkeyStorage struct {
-	client *redis.Client
+	client      *redis.Client
+	pubSubConn  *redis.PubSub
+	subscribers map[string][]chan<- models.SseMessage
+	subMutex    sync.RWMutex
 }
 
 // NewValkeyStorage creates a new Valkey storage instance
@@ -41,119 +44,145 @@ func NewValkeyStorage(valkeyURI string) (*ValkeyStorage, error) {
 	log.Info("successfully connected to Valkey")
 
 	storage := &ValkeyStorage{
-		client: rdb,
+		client:      rdb,
+		subscribers: make(map[string][]chan<- models.SseMessage),
 	}
-
-	// Start cleanup worker
-	go storage.worker()
 
 	return storage, nil
 }
 
-// TODO consider to remove it
-// worker runs periodically to clean up expired messages
-func (s *ValkeyStorage) worker() {
-	log := log.WithField("prefix", "ValkeyStorage.worker")
-	ticker := time.NewTicker(time.Minute)
-	defer ticker.Stop()
+// Pub publishes a message to Redis and stores it with TTL
+func (s *ValkeyStorage) Pub(ctx context.Context, key string, ttl int64, message models.SseMessage) error {
+	log := log.WithField("prefix", "ValkeyStorage.Pub")
 
-	for range ticker.C {
-		log.Info("running cleanup task")
-		ctx := context.Background()
-
-		// Get all client keys
-		keys, err := s.client.Keys(ctx, "client:*").Result()
-		if err != nil {
-			log.Errorf("failed to get client keys: %v", err)
-			continue
-		}
-
-		for _, key := range keys {
-			// Remove expired messages from each client's list
-			now := time.Now().Unix()
-			_, err := s.client.ZRemRangeByScore(ctx, key, "0", strconv.FormatInt(now, 10)).Result()
-			if err != nil {
-				log.Errorf("failed to remove expired messages for key %s: %v", key, err)
-			}
-		}
-	}
-}
-
-// Add stores a message for a specific client with TTL
-func (s *ValkeyStorage) Add(ctx context.Context, key string, ttl int64, mes models.SseMessage) error {
-	log := log.WithField("prefix", "ValkeyStorage.Add")
-
-	messageData, err := json.Marshal(mes)
+	// Publish to Redis channel
+	channel := fmt.Sprintf("client:%s", key)
+	messageData, err := json.Marshal(message)
 	if err != nil {
 		log.Errorf("failed to marshal message: %v", err)
 		return err
 	}
 
-	// Use sorted set with expiration time as score
-	expireTime := time.Now().Add(time.Duration(ttl) * time.Second).Unix()
-	clientKey := fmt.Sprintf("client:%s", key)
+	err = s.client.Publish(ctx, channel, messageData).Err()
+	if err != nil {
+		log.Errorf("failed to publish message to channel %s: %v", channel, err)
+		return err
+	}
 
-	// Add message to sorted set with expiration time as score
-	err = s.client.ZAdd(ctx, clientKey, redis.Z{
+	// Store message with TTL as backup for offline clients
+	expireTime := time.Now().Add(time.Duration(ttl) * time.Second).Unix()
+	err = s.client.ZAdd(ctx, channel, redis.Z{
 		Score:  float64(expireTime),
 		Member: messageData,
 	}).Err()
 
 	if err != nil {
-		log.Errorf("failed to add message to Valkey: %v", err)
+		log.Errorf("failed to store message in Valkey: %v", err)
 		return err
 	}
 
-	// TODO Maybe redundant?
-	// Set expiration on the key itself (as a safety net)
-	s.client.Expire(ctx, clientKey, time.Duration(ttl+60)*time.Second)
+	// Set expiration on the key itself
+	s.client.Expire(ctx, channel, time.Duration(ttl+60)*time.Second)
 
-	log.Debugf("added message for client %s with TTL %d seconds", key, ttl)
+	log.Debugf("published and stored message for client %s with TTL %d seconds", key, ttl)
 	return nil
 }
 
-// GetMessages retrieves messages for multiple clients with event ID filtering
-func (s *ValkeyStorage) GetMessages(ctx context.Context, keys []string, lastEventId int64) ([]models.SseMessage, error) {
-	log := log.WithField("prefix", "ValkeyStorage.GetMessages")
+// Sub subscribes to Redis channels for the given keys
+func (s *ValkeyStorage) Sub(ctx context.Context, keys []string, messageCh chan<- models.SseMessage) error {
+	log := log.WithField("prefix", "ValkeyStorage.Sub")
 
-	var allMessages []models.SseMessage
-	now := time.Now().Unix()
+	s.subMutex.Lock()
+	defer s.subMutex.Unlock()
 
+	// Add messageCh to subscribers for each key
 	for _, key := range keys {
-		clientKey := fmt.Sprintf("client:%s", key)
-
-		// Get all non-expired messages from sorted set
-		// Remove expired messages first
-		s.client.ZRemRangeByScore(ctx, clientKey, "0", strconv.FormatInt(now, 10))
-
-		// Get all remaining messages
-		messages, err := s.client.ZRange(ctx, clientKey, 0, -1).Result()
-		if err != nil {
-			if err == redis.Nil {
-				continue // No messages for this client
-			}
-			log.Errorf("failed to get messages for client %s: %v", key, err)
-			return nil, err
+		if s.subscribers[key] == nil {
+			s.subscribers[key] = make([]chan<- models.SseMessage, 0)
 		}
+		s.subscribers[key] = append(s.subscribers[key], messageCh)
+	}
 
-		// Parse and filter messages
-		for _, msgData := range messages {
-			var msg models.SseMessage
-			err := json.Unmarshal([]byte(msgData), &msg)
-			if err != nil {
-				log.Errorf("failed to unmarshal message: %v", err)
-				continue
-			}
+	// Create channels list for subscription
+	channels := make([]string, len(keys))
+	for i, key := range keys {
+		channels[i] = fmt.Sprintf("client:%s", key)
+	}
 
-			// Filter by event ID
-			if msg.EventId > lastEventId {
-				allMessages = append(allMessages, msg)
-			}
+	// If this is the first subscription, start the pub-sub connection
+	if s.pubSubConn == nil {
+		s.pubSubConn = s.client.Subscribe(ctx, channels...)
+		go s.handlePubSub()
+	} else {
+		// Subscribe to additional channels
+		s.pubSubConn.Subscribe(ctx, channels...)
+	}
+
+	log.Debugf("subscribed to channels for keys: %v", keys)
+	return nil
+}
+
+// Unsub unsubscribes from Redis channels for the given keys
+func (s *ValkeyStorage) Unsub(ctx context.Context, keys []string) error {
+	log := log.WithField("prefix", "ValkeyStorage.Unsub")
+
+	s.subMutex.Lock()
+	defer s.subMutex.Unlock()
+
+	channels := make([]string, 0)
+	for _, key := range keys {
+		channel := fmt.Sprintf("client:%s", key)
+		channels = append(channels, channel)
+		delete(s.subscribers, key)
+	}
+
+	if s.pubSubConn != nil {
+		err := s.pubSubConn.Unsubscribe(ctx, channels...)
+		if err != nil {
+			log.Errorf("failed to unsubscribe from channels: %v", err)
+			return err
 		}
 	}
 
-	log.Debugf("retrieved %d messages for %d clients", len(allMessages), len(keys))
-	return allMessages, nil
+	log.Debugf("unsubscribed from channels for keys: %v", keys)
+	return nil
+}
+
+// handlePubSub processes incoming Redis pub-sub messages
+func (s *ValkeyStorage) handlePubSub() {
+	log := log.WithField("prefix", "ValkeyStorage.handlePubSub")
+
+	for msg := range s.pubSubConn.Channel() {
+		// Parse channel name to get client key
+		var key string
+		if len(msg.Channel) > 7 && msg.Channel[:7] == "client:" {
+			key = msg.Channel[7:]
+		} else {
+			continue
+		}
+
+		// Parse message
+		var sseMessage models.SseMessage
+		err := json.Unmarshal([]byte(msg.Payload), &sseMessage)
+		if err != nil {
+			log.Errorf("failed to unmarshal pub-sub message: %v", err)
+			continue
+		}
+
+		// Send to all subscribers for this key
+		s.subMutex.RLock()
+		subscribers, exists := s.subscribers[key]
+		if exists {
+			for _, ch := range subscribers {
+				select {
+				case ch <- sseMessage:
+				default:
+					// Channel is full or closed, skip
+				}
+			}
+		}
+		s.subMutex.RUnlock()
+	}
 }
 
 // HealthCheck verifies the connection to Valkey

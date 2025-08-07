@@ -4,7 +4,6 @@ import (
 	"context"
 	"sync"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/ton-connect/bridge3/internal/models"
 	"github.com/ton-connect/bridge3/internal/storage"
 )
@@ -31,20 +30,8 @@ func NewSession(s storage.Storage, clientIds []string, lastEventId int64) *Sessi
 }
 
 func (s *Session) worker() {
-	log := log.WithField("prefix", "Session.worker")
-	queue, err := s.storage.GetMessages(context.TODO(), s.ClientIds, s.lastEventId)
-	if err != nil {
-		log.Info("get queue error: ", err)
-	}
-	for _, m := range queue {
-		select {
-		case <-s.Closer:
-			break //nolint:staticcheck// TODO review golangci-lint issue
-		default:
-			s.MessageCh <- m
-		}
-	}
-
+	// TODO: Replace with pub-sub subscription
+	// For now, just wait for closer to maintain compatibility
 	<-s.Closer
 	close(s.MessageCh)
 }
