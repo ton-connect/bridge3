@@ -86,7 +86,7 @@ func (s *PgStorage) Pub(ctx context.Context, key string, ttl int64, message mode
 }
 
 // Sub is not implemented for Postgres storage
-func (s *PgStorage) Sub(ctx context.Context, keys []string, messageCh chan<- models.SseMessage) error {
+func (s *PgStorage) Sub(ctx context.Context, keys []string, lastEventId int64, messageCh chan<- models.SseMessage) error {
 	return errors.New("pub-sub not implemented for Postgres storage")
 }
 

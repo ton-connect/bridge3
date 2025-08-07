@@ -88,8 +88,8 @@ func (s *ValkeyStorage) Pub(ctx context.Context, key string, ttl int64, message 
 	return nil
 }
 
-// Sub subscribes to Redis channels for the given keys
-func (s *ValkeyStorage) Sub(ctx context.Context, keys []string, messageCh chan<- models.SseMessage) error {
+// Sub subscribes to Redis channels for the given keys and sends historical messages after lastEventId
+func (s *ValkeyStorage) Sub(ctx context.Context, keys []string, lastEventId int64, messageCh chan<- models.SseMessage) error {
 	log := log.WithField("prefix", "ValkeyStorage.Sub")
 
 	s.subMutex.Lock()
@@ -101,6 +101,43 @@ func (s *ValkeyStorage) Sub(ctx context.Context, keys []string, messageCh chan<-
 			s.subscribers[key] = make([]chan<- models.SseMessage, 0)
 		}
 		s.subscribers[key] = append(s.subscribers[key], messageCh)
+	}
+
+	// Send historical messages for each key
+	now := time.Now().Unix()
+	for _, key := range keys {
+		clientKey := fmt.Sprintf("client:%s", key)
+
+		// Remove expired messages first
+		s.client.ZRemRangeByScore(ctx, clientKey, "0", fmt.Sprintf("%d", now))
+
+		// Get all remaining messages
+		messages, err := s.client.ZRange(ctx, clientKey, 0, -1).Result()
+		if err != nil {
+			if err != redis.Nil {
+				log.Errorf("failed to get historical messages for client %s: %v", key, err)
+			}
+			continue // No messages for this client or error occurred
+		}
+
+		// Parse and send historical messages
+		for _, msgData := range messages {
+			var msg models.SseMessage
+			err := json.Unmarshal([]byte(msgData), &msg)
+			if err != nil {
+				log.Errorf("failed to unmarshal historical message: %v", err)
+				continue
+			}
+
+			// Filter by event ID - only send messages after lastEventId
+			if msg.EventId > lastEventId {
+				select {
+				case messageCh <- msg:
+				default:
+					// Channel is full or closed, skip
+				}
+			}
+		}
 	}
 
 	// Create channels list for subscription

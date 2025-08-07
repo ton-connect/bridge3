@@ -19,7 +19,7 @@ type message struct {
 	expireAt time.Time
 }
 
-func (m message) IsExpired(now time.Time) bool {
+func (m message) isExpired(now time.Time) bool {
 	return m.expireAt.Before(now)
 }
 
@@ -35,7 +35,7 @@ func NewMemStorage() *MemStorage {
 func removeExpiredMessages(ms []message, now time.Time) []message {
 	results := make([]message, 0)
 	for _, m := range ms {
-		if !m.IsExpired(now) {
+		if !m.isExpired(now) {
 			results = append(results, m)
 		}
 	}
@@ -78,16 +78,41 @@ func (s *MemStorage) Pub(ctx context.Context, key string, ttl int64, mes models.
 	return nil
 }
 
-// Sub subscribes to messages for the given keys
-func (s *MemStorage) Sub(ctx context.Context, keys []string, messageCh chan<- models.SseMessage) error {
+// Sub subscribes to messages for the given keys and sends historical messages after lastEventId
+func (s *MemStorage) Sub(ctx context.Context, keys []string, lastEventId int64, messageCh chan<- models.SseMessage) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
+	// Add to subscribers
 	for _, key := range keys {
 		if s.subscribers[key] == nil {
 			s.subscribers[key] = make([]chan<- models.SseMessage, 0)
 		}
 		s.subscribers[key] = append(s.subscribers[key], messageCh)
+	}
+
+	// Retrieve messages
+	now := time.Now()
+	for _, key := range keys {
+		messages, exists := s.db[key]
+		if !exists {
+			continue
+		}
+
+		for _, msg := range messages {
+			if msg.isExpired(now) {
+				continue
+			}
+			if msg.EventId <= lastEventId {
+				continue
+			}
+
+			select {
+			case messageCh <- msg.SseMessage:
+			default:
+				// Channel is full or closed, skip
+			}
+		}
 	}
 
 	return nil
@@ -105,7 +130,7 @@ func (s *MemStorage) Unsub(ctx context.Context, keys []string) error {
 	return nil
 }
 
+// HealthCheck should be implemented
 func (s *MemStorage) HealthCheck() error {
-	// In-memory storage does not require health checks.
-	return nil
+	return nil // Always healthy
 }

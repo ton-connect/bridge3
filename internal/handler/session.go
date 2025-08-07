@@ -12,10 +12,9 @@ type Session struct {
 	mux         sync.RWMutex
 	ClientIds   []string
 	storage     storage.Storage
-	messageCh   chan models.SseMessage // Internal channel for storage notifications
+	messageCh   chan models.SseMessage
 	Closer      chan interface{}
 	lastEventId int64
-	isActive    bool
 }
 
 func NewSession(s storage.Storage, clientIds []string, lastEventId int64) *Session {
@@ -23,10 +22,9 @@ func NewSession(s storage.Storage, clientIds []string, lastEventId int64) *Sessi
 		mux:         sync.RWMutex{},
 		ClientIds:   clientIds,
 		storage:     s,
-		messageCh:   make(chan models.SseMessage, 100), // Larger buffer for pub-sub
+		messageCh:   make(chan models.SseMessage, 100),
 		Closer:      make(chan interface{}),
 		lastEventId: lastEventId,
-		isActive:    false,
 	}
 	return &session
 }
@@ -41,19 +39,11 @@ func (s *Session) Close() {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
-	if !s.isActive {
-		return
-	}
-
-	s.isActive = false
-
-	// Unsubscribe from storage
 	err := s.storage.Unsub(context.Background(), s.ClientIds)
 	if err != nil {
-		// Log error but don't fail - this is cleanup
+		// TODO log errors here
 	}
 
-	// Close channels
 	close(s.Closer)
 	close(s.messageCh)
 }
@@ -63,17 +53,8 @@ func (s *Session) Start() {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
-	if s.isActive {
-		return
-	}
-
-	s.isActive = true
-
-	// Subscribe to storage for real-time messages
-	err := s.storage.Sub(context.Background(), s.ClientIds, s.messageCh)
+	err := s.storage.Sub(context.Background(), s.ClientIds, s.lastEventId, s.messageCh)
 	if err != nil {
-		// If subscription fails, mark as inactive
-		s.isActive = false
 		close(s.messageCh)
 		return
 	}

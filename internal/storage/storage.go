@@ -9,7 +9,7 @@ import (
 
 type Storage interface {
 	Pub(ctx context.Context, key string, ttl int64, message models.SseMessage) error
-	Sub(ctx context.Context, keys []string, messageCh chan<- models.SseMessage) error
+	Sub(ctx context.Context, keys []string, lastEventId int64, messageCh chan<- models.SseMessage) error
 	Unsub(ctx context.Context, keys []string) error
 	HealthCheck() error
 }
