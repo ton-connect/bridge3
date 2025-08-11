@@ -135,7 +135,7 @@ func (h *handler) EventRegistrationHandler(c echo.Context) error {
 	notify := ctx.Done()
 	go func() {
 		<-notify
-		close(session.Closer)
+		session.Close()
 		h.removeConnection(session)
 		log.Infof("connection: %v closed with error %v", session.ClientIds, ctx.Err())
 	}()
@@ -145,7 +145,7 @@ func (h *handler) EventRegistrationHandler(c echo.Context) error {
 loop:
 	for {
 		select {
-		case msg, ok := <-session.MessageCh:
+		case msg, ok := <-session.GetMessages():
 			if !ok {
 				log.Errorf("can't read from channel")
 				break loop
@@ -205,7 +205,7 @@ func (h *handler) SendMessageHandler(c echo.Context) error {
 		log.Error(err)
 		return c.JSON(utils.HttpResError(err.Error(), http.StatusBadRequest))
 	}
-	if ttl > 300 { // TODO: config
+	if ttl > 300 { // TODO: config MaxTTL value
 		badRequestMetric.Inc()
 		errorMsg := "param \"ttl\" too high"
 		log.Error(errorMsg)
@@ -251,19 +251,11 @@ func (h *handler) SendMessageHandler(c echo.Context) error {
 		EventId: h.nextID(),
 		Message: mes,
 	}
-	h.Mux.RLock()
-	s, ok := h.Connections[toId[0]]
-	h.Mux.RUnlock()
-	if ok {
-		s.mux.Lock()
-		for _, ses := range s.Sessions {
-			ses.AddMessageToQueue(ctx, sseMessage)
-		}
-		s.mux.Unlock()
-	}
+
+	// Send message only to storage - pub-sub will handle distribution
 	go func() {
-		log := log.WithField("prefix", "SendMessageHandler.storge.Add")
-		err = h.storage.Add(context.Background(), toId[0], ttl, sseMessage)
+		log := log.WithField("prefix", "SendMessageHandler.storage.Pub")
+		err = h.storage.Pub(context.Background(), toId[0], ttl, sseMessage)
 		if err != nil {
 			log.Errorf("db error: %v", err)
 		}

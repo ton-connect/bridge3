@@ -9,8 +9,9 @@ import (
 )
 
 type MemStorage struct {
-	db   map[string][]message
-	lock sync.Mutex
+	db          map[string][]message
+	subscribers map[string][]chan<- models.SseMessage
+	lock        sync.Mutex
 }
 
 type message struct {
@@ -18,13 +19,14 @@ type message struct {
 	expireAt time.Time
 }
 
-func (m message) IsExpired(now time.Time) bool {
+func (m message) isExpired(now time.Time) bool {
 	return m.expireAt.Before(now)
 }
 
 func NewMemStorage() *MemStorage {
 	s := MemStorage{
-		db: map[string][]message{},
+		db:          map[string][]message{},
+		subscribers: make(map[string][]chan<- models.SseMessage),
 	}
 	go s.watcher()
 	return &s
@@ -33,7 +35,7 @@ func NewMemStorage() *MemStorage {
 func removeExpiredMessages(ms []message, now time.Time) []message {
 	results := make([]message, 0)
 	for _, m := range ms {
-		if !m.IsExpired(now) {
+		if !m.isExpired(now) {
 			results = append(results, m)
 		}
 	}
@@ -51,39 +53,84 @@ func (s *MemStorage) watcher() {
 	}
 }
 
-func (s *MemStorage) GetMessages(ctx context.Context, keys []string, lastEventId int64) ([]models.SseMessage, error) {
+// Pub publishes a message to all subscribers and stores it with TTL
+func (s *MemStorage) Pub(ctx context.Context, key string, ttl int64, mes models.SseMessage) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	now := time.Now()
-	results := make([]models.SseMessage, 0)
-	for _, key := range keys {
-		messages, ok := s.db[key]
-		if !ok {
-			continue
-		}
-		for _, m := range messages {
-			if m.IsExpired(now) {
-				continue
+	// Store message with TTL
+	s.db[key] = append(s.db[key], message{
+		SseMessage: mes,
+		expireAt:   time.Now().Add(time.Duration(ttl) * time.Second),
+	})
+
+	// Send to all subscribers for this key
+	if subscribers, exists := s.subscribers[key]; exists {
+		for _, ch := range subscribers {
+			select {
+			case ch <- mes:
+			default:
+				// Channel is full or closed, skip
 			}
-			if m.EventId <= lastEventId {
-				continue
-			}
-			results = append(results, m.SseMessage)
 		}
 	}
-	return results, nil
+
+	return nil
 }
 
-func (s *MemStorage) Add(ctx context.Context, key string, ttl int64, mes models.SseMessage) error {
+// Sub subscribes to messages for the given keys and sends historical messages after lastEventId
+func (s *MemStorage) Sub(ctx context.Context, keys []string, lastEventId int64, messageCh chan<- models.SseMessage) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	s.db[key] = append(s.db[key], message{SseMessage: mes, expireAt: time.Now().Add(time.Duration(ttl) * time.Second)})
+	// Add to subscribers
+	for _, key := range keys {
+		if s.subscribers[key] == nil {
+			s.subscribers[key] = make([]chan<- models.SseMessage, 0)
+		}
+		s.subscribers[key] = append(s.subscribers[key], messageCh)
+	}
+
+	// Retrieve messages
+	now := time.Now()
+	for _, key := range keys {
+		messages, exists := s.db[key]
+		if !exists {
+			continue
+		}
+
+		for _, msg := range messages {
+			if msg.isExpired(now) {
+				continue
+			}
+			if msg.EventId <= lastEventId {
+				continue
+			}
+
+			select {
+			case messageCh <- msg.SseMessage:
+			default:
+				// Channel is full or closed, skip
+			}
+		}
+	}
+
 	return nil
 }
 
-func (s *MemStorage) HealthCheck() error {
-	// In-memory storage does not require health checks.
+// Unsub unsubscribes from messages for the given keys
+func (s *MemStorage) Unsub(ctx context.Context, keys []string) error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	for _, key := range keys {
+		delete(s.subscribers, key)
+	}
+
 	return nil
+}
+
+// HealthCheck should be implemented
+func (s *MemStorage) HealthCheck() error {
+	return nil // Always healthy
 }

@@ -12,8 +12,8 @@ import (
 type Session struct {
 	mux         sync.RWMutex
 	ClientIds   []string
-	MessageCh   chan models.SseMessage
 	storage     storage.Storage
+	messageCh   chan models.SseMessage
 	Closer      chan interface{}
 	lastEventId int64
 }
@@ -23,40 +23,41 @@ func NewSession(s storage.Storage, clientIds []string, lastEventId int64) *Sessi
 		mux:         sync.RWMutex{},
 		ClientIds:   clientIds,
 		storage:     s,
-		MessageCh:   make(chan models.SseMessage, 10),
+		messageCh:   make(chan models.SseMessage, 100),
 		Closer:      make(chan interface{}),
 		lastEventId: lastEventId,
 	}
 	return &session
 }
 
-func (s *Session) worker() {
-	log := log.WithField("prefix", "Session.worker")
-	queue, err := s.storage.GetMessages(context.TODO(), s.ClientIds, s.lastEventId)
+// GetMessages returns the read-only channel for receiving messages
+func (s *Session) GetMessages() <-chan models.SseMessage {
+	return s.messageCh
+}
+
+// Close stops the session and cleans up resources
+func (s *Session) Close() {
+	log := log.WithField("prefix", "Session.Close")
+	s.mux.Lock()
+	defer s.mux.Unlock()
+
+	err := s.storage.Unsub(context.Background(), s.ClientIds)
 	if err != nil {
-		log.Info("get queue error: ", err)
-	}
-	for _, m := range queue {
-		select {
-		case <-s.Closer:
-			break //nolint:staticcheck// TODO review golangci-lint issue
-		default:
-			s.MessageCh <- m
-		}
+		log.Errorf("failed to unsubscribe from storage: %v", err)
 	}
 
-	<-s.Closer
-	close(s.MessageCh)
+	close(s.Closer)
+	close(s.messageCh)
 }
 
-func (s *Session) AddMessageToQueue(ctx context.Context, mes models.SseMessage) {
-	select {
-	case <-s.Closer:
-	default:
-		s.MessageCh <- mes
-	}
-}
-
+// Start begins the session by subscribing to storage
 func (s *Session) Start() {
-	go s.worker()
+	s.mux.Lock()
+	defer s.mux.Unlock()
+
+	err := s.storage.Sub(context.Background(), s.ClientIds, s.lastEventId, s.messageCh)
+	if err != nil {
+		close(s.messageCh)
+		return
+	}
 }

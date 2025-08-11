@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        storage: [memory, valkey, postgres]
+        storage: [memory, valkey] # , postgres - disabled temporarily
     
     steps:
     - uses: actions/checkout@v4

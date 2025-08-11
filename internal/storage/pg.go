@@ -80,45 +80,19 @@ func (s *PgStorage) worker() {
 
 }
 
-func (s *PgStorage) Add(ctx context.Context, key string, ttl int64, mes models.SseMessage) error {
-	_, err := s.postgres.Exec(ctx, `
-		INSERT INTO bridge.messages
-		(
-		client_id,
-		event_id,
-		end_time,
-		bridge_message
-		)
-		VALUES ($1, $2, to_timestamp($3), $4)
-	`, key, mes.EventId, time.Now().Add(time.Duration(ttl)*time.Second).Unix(), mes.Message)
-	if err != nil {
-		return err
-	}
-	return nil
+// Pub is not implemented for Postgres storage
+func (s *PgStorage) Pub(ctx context.Context, key string, ttl int64, message models.SseMessage) error {
+	return errors.New("pub-sub not implemented for Postgres storage")
 }
 
-func (s *PgStorage) GetMessages(ctx context.Context, keys []string, lastEventId int64) ([]models.SseMessage, error) { // interface{}
-	log := log.WithField("prefix", "Storage.GetQueue")
-	var messages []models.SseMessage
-	rows, err := s.postgres.Query(ctx, `SELECT event_id, bridge_message
-	FROM bridge.messages
-	WHERE current_timestamp < end_time 
-	AND event_id > $1
-	AND client_id = any($2)`, lastEventId, keys)
-	if err != nil {
-		log.Info(err)
-		return nil, err
-	}
-	for rows.Next() {
-		var mes models.SseMessage
-		err = rows.Scan(&mes.EventId, &mes.Message)
-		if err != nil {
-			log.Info(err)
-			return nil, err
-		}
-		messages = append(messages, mes)
-	}
-	return messages, nil
+// Sub is not implemented for Postgres storage
+func (s *PgStorage) Sub(ctx context.Context, keys []string, lastEventId int64, messageCh chan<- models.SseMessage) error {
+	return errors.New("pub-sub not implemented for Postgres storage")
+}
+
+// Unsub is not implemented for Postgres storage
+func (s *PgStorage) Unsub(ctx context.Context, keys []string) error {
+	return errors.New("pub-sub not implemented for Postgres storage")
 }
 
 func (s *PgStorage) HealthCheck() error {

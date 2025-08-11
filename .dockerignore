@@ -1,13 +1,4 @@
 .git
 .gitignore
-README.md
-README.internals.md
-LICENSE
-Dockerfile
-docker-compose.yml
-nginx.conf
 .dockerignore
-cover.out
-test/
-scripts/
 vendor/
