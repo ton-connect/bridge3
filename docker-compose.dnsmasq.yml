@@ -107,7 +107,6 @@ services:
     container_name: bridge-integration
     environment:
       BRIDGE_URL: "http://bridge-magic.local:8080/bridge"
-      # Add any other environment variables your integration needs
     depends_on:
       bridge1:
         condition: service_started

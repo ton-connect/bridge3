@@ -82,7 +82,7 @@ func (s *ValkeyStorage) Pub(ctx context.Context, key string, ttl int64, message 
 	}
 
 	// Set expiration on the key itself
-	s.client.Expire(ctx, channel, time.Duration(ttl+60)*time.Second)
+	s.client.Expire(ctx, channel, time.Duration(ttl+60)*time.Second) // TODO remove 60 seconds buffer
 
 	log.Debugf("published and stored message for client %s with TTL %d seconds", key, ttl)
 	return nil

@@ -1,5 +1,5 @@
 # Create a new file: Dockerfile.integration
-FROM node:18-alpine
+FROM node:24-alpine
 
 # Install necessary tools including make
 RUN apk add --no-cache \
