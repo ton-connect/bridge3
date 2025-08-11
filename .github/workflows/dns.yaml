@@ -18,8 +18,8 @@ jobs:
       uses: docker/setup-buildx-action@v3
 
     - name: Run DNS load balancing integration test
-      run: docker-compose -f docker-compose.dnsmasq.yml up integration
+      run: docker compose -f docker-compose.dnsmasq.yml up integration
 
     - name: Clean up containers
       if: always()
-      run: docker-compose -f docker-compose.dnsmasq.yml down -v
+      run: docker compose -f docker-compose.dnsmasq.yml down -v
