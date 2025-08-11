@@ -1,4 +1,4 @@
-name: DNS Load Balancing Integration Test
+name: dns
 
 on:
   push:
@@ -7,8 +7,8 @@ on:
     branches: [ main ]
 
 jobs:
-  dns-load-balancing:
-    name: DNS Load Balancing Integration Test
+  load-balancing-test:
+    name: load balancing test
     runs-on: ubuntu-latest
     
     steps:
