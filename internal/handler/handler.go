@@ -324,5 +324,5 @@ func (h *handler) CreateSession(sessionId string, clientIds []string, lastEventI
 }
 
 func (h *handler) nextID() int64 {
-	return atomic.AddInt64(&h._eventIDs, 1)
+	return atomic.AddInt64(&h._eventIDs, 1) // TODO get rid of this global counter
 }

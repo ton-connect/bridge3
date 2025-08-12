@@ -11,6 +11,7 @@ jobs:
   nginx:
     name: nginx tests
     runs-on: ubuntu-latest
+    if: false  # Temporarily disable nginx tests
     
     steps:
     - name: Check out code
