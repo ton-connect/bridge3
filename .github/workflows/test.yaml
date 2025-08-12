@@ -55,8 +55,9 @@ jobs:
 
     - name: Run integration tests
       run: |
-        STORAGE=${{ matrix.storage }} make run
+        make run
         make integration-test
         make stop
       env:
         STORAGE: ${{ matrix.storage }}
+        VALKEY_URI: "redis://valkey:6379"
