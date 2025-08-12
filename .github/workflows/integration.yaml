@@ -1,0 +1,29 @@
+name: tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+    
+jobs:
+  integration:
+    name: integration-${{ matrix.storage }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        storage: [memory, valkey] # , postgres - disabled temporarily
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Run DNS load balancing integration test
+      run: docker compose -f docker-compose.${{ matrix.storage }}.yml up integration
+
+    - name: Clean up containers
+      if: always()
+      run: docker compose -f docker-compose.${{ matrix.storage }}.yml down -v

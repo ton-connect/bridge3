@@ -1,6 +1,6 @@
 GOFMT_FILES?=$$(find . -name '*.go' | grep -v vendor | grep -v yacc | grep -v .git)
 
-.PHONY: all imports fmt test test-bridge-sdk clean-bridge-sdk integration-test run run-memory run-postgres run-valkey stop stop-memory stop-postgres stop-valkey clean clean-memory clean-postgres clean-valkey logs logs-memory logs-postgres logs-valkey status status-memory status-postgres status-valkey help
+.PHONY: all imports fmt test test-bridge-sdk clean-bridge-sdk run run-memory run-postgres run-valkey stop stop-memory stop-postgres stop-valkey clean clean-memory clean-postgres clean-valkey logs logs-memory logs-postgres logs-valkey status status-memory status-postgres status-valkey help
 
 STORAGE ?= memory
 DOCKER_COMPOSE_FILE = docker-compose.memory.yml
@@ -37,9 +37,6 @@ test-bridge-sdk:
 clean-bridge-sdk:
 	@echo "Cleaning up bridge-sdk directory..."
 	@rm -rf bridge-sdk
-
-integration-test:
-	@./scripts/integration-test.sh
 
 run:
 	@echo "Starting bridge environment with $(STORAGE) storage using $(DOCKER_COMPOSE_FILE)..."
