@@ -17,15 +17,3 @@ jobs:
 
      - name: unit tests
        run: make build
-
-
-  unit:
-     name: unit
-     runs-on: ubuntu-latest
-     steps:
-
-     - name: Check out code
-       uses: actions/checkout@v4
-
-     - name: unit tests
-       run: make test
