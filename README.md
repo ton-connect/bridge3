@@ -29,6 +29,7 @@ Configure using environment variables:
 
 ```bash
 PORT=8081                       # Server port
+STORAGE="valkey"
 VALKEY_URI="valkey://host:6379" # Valkey connection string
 POSTGRES_URI="postgres://user:pass@host/dbname"  # PostgreSQL connection
 CORS_ENABLE=true                # Enable CORS headers
@@ -44,10 +45,7 @@ CONNECTIONS_LIMIT=200           # Maximum concurrent connections
 - **Memory**: In-memory storage (no persistence, fastest for testing)
 
 **Storage Selection Logic:**
-- If `POSTGRES_URI` is set → PostgreSQL storage
-- If `VALKEY_URI` is set → Valkey storage  
-- If both are set → Valkey takes precedence
-- If neither is set → Memory storage
+Depending on STORAGE env variable.
 
 ## 🛠️API Endpoints
 

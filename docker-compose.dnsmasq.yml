@@ -37,6 +37,7 @@ services:
     container_name: bridge-instance1
     environment:
       PORT: 8080
+      STORAGE: "valkey"
       VALKEY_URI: "redis://valkey:6379"
       CORS_ENABLE: "true"
       HEARTBEAT_INTERVAL: 10
@@ -59,6 +60,7 @@ services:
     container_name: bridge-instance2
     environment:
       PORT: 8080
+      STORAGE: "valkey"
       VALKEY_URI: "redis://valkey:6379"
       CORS_ENABLE: "true"
       HEARTBEAT_INTERVAL: 10
@@ -81,6 +83,7 @@ services:
     container_name: bridge-instance3
     environment:
       PORT: 8080
+      STORAGE: "valkey"
       VALKEY_URI: "redis://valkey:6379"
       CORS_ENABLE: "true"
       HEARTBEAT_INTERVAL: 10
