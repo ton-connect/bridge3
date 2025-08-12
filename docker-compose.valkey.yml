@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   valkey:
     image: valkey/valkey:7.2-alpine
@@ -17,9 +15,11 @@ services:
     restart: unless-stopped
 
   bridge:
+    container_name: bridge
     build: .
     environment:
       PORT: 8081
+      STORAGE: "valkey"
       VALKEY_URI: "redis://valkey:6379"
       CORS_ENABLE: "true"
       HEARTBEAT_INTERVAL: 10
@@ -31,6 +31,21 @@ services:
     networks:
       - bridge_network
     restart: unless-stopped
+
+  integration:
+    build:
+      context: .
+      dockerfile: Dockerfile.integration
+    container_name: bridge-integration
+    environment:
+      BRIDGE_URL: "http://bridge:8081/bridge"
+    depends_on:
+      bridge:
+        condition: service_started
+    networks:
+      - bridge_network
+    command: ["/bin/bash", "-c", "make test-bridge-sdk"]
+    # command: ["/bin/bash", "-c", "tail -f /dev/null"]
 
 volumes:
   valkey_data:

@@ -82,23 +82,24 @@ func main() {
 	config.LoadConfig()
 
 	dbURI := ""
-	storageType := "memory"
+	store := "memory"
+	if config.Config.Storage != "" {
+		store = config.Config.Storage
+	}
 
-	if config.Config.PostgresURI != "" {
+	switch store {
+	case "postgres":
+		log.Info("Using PostgreSQL storage")
 		dbURI = config.Config.PostgresURI
-		storageType = "postgres"
-	}
-
-	if config.Config.ValkeyURI != "" {
+	case "valkey":
+		log.Info("Using Valkey storage")
 		dbURI = config.Config.ValkeyURI
-		storageType = "valkey"
+	default:
+		log.Info("Using in-memory storage as default")
+		// No URI needed for memory storage
 	}
 
-	if config.Config.ValkeyURI != "" && config.Config.PostgresURI != "" {
-		log.Warn("Both VALKEY_URI and POSTGRES_URI are set. Using Valkey/Redis as primary storage.")
-	}
-
-	dbConn, err := storage.NewStorage(storageType, dbURI)
+	dbConn, err := storage.NewStorage(store, dbURI)
 
 	if err != nil {
 		log.Fatalf("failed to create storage: %v", err)
