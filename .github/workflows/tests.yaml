@@ -24,8 +24,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        storage: [memory, valkey] # , postgres - disabled temporarily
-    
+        storage: [memory, valkey, nginx, dnsmasq] # , postgres - disabled temporarily
+
     steps:
     - uses: actions/checkout@v4
 
@@ -38,37 +38,3 @@ jobs:
     - name: Clean up containers
       if: always()
       run: docker compose -f docker-compose.${{ matrix.storage }}.yml down -v
-
-  dns-load-balancing-test:
-    name: dns load balancing test
-    runs-on: ubuntu-latest
-    
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Run DNS load balancing integration test
-      run: docker compose -f docker-compose.dnsmasq.yml up integration
-
-    - name: Clean up containers
-      if: always()
-      run: docker compose -f docker-compose.dnsmasq.yml down -v
-
-  nginx-tests:
-    name: nginx tests
-    runs-on: ubuntu-latest
-    
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Run nginx integration test
-      run: docker compose -f docker-compose.nginx.yml up integration
-
-    - name: Clean up containers
-      if: always()
-      run: docker compose -f docker-compose.nginx.yml down -v
