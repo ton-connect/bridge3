@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -64,7 +63,7 @@ type handler struct {
 	Mux               sync.RWMutex
 	Connections       map[string]*stream
 	storage           storage.Storage
-	_eventIDs         int64
+	eventIDGen        *EventIDGenerator
 	heartbeatInterval time.Duration
 }
 
@@ -73,7 +72,7 @@ func NewHandler(s storage.Storage, heartbeatInterval time.Duration) *handler {
 		Mux:               sync.RWMutex{},
 		Connections:       make(map[string]*stream),
 		storage:           s,
-		_eventIDs:         time.Now().UnixMicro(),
+		eventIDGen:        NewEventIDGenerator(),
 		heartbeatInterval: heartbeatInterval,
 	}
 	return &h
@@ -248,7 +247,7 @@ func (h *handler) SendMessageHandler(c echo.Context) error {
 	}
 
 	sseMessage := models.SseMessage{
-		EventId: h.nextID(),
+		EventId: h.eventIDGen.NextID(),
 		Message: mes,
 	}
 
@@ -321,8 +320,4 @@ func (h *handler) CreateSession(sessionId string, clientIds []string, lastEventI
 		activeSubscriptionsMetric.Inc()
 	}
 	return session
-}
-
-func (h *handler) nextID() int64 {
-	return atomic.AddInt64(&h._eventIDs, 1) // TODO get rid of this global counter
 }
