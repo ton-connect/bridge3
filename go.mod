@@ -9,7 +9,7 @@ require (
 	github.com/labstack/echo-contrib v0.17.4
 	github.com/labstack/echo/v4 v4.13.4
 	github.com/prometheus/client_golang v1.23.0
-	github.com/redis/go-redis/v9 v9.11.0
+	github.com/redis/go-redis/v9 v9.12.1
 	github.com/sirupsen/logrus v1.9.3
 	golang.org/x/exp v0.0.0-20230626212559-97b1e661b5df
 	golang.org/x/time v0.12.0
