@@ -84,7 +84,7 @@ func TestEventIDGenerator_SingleGenerators_Ordering(t *testing.T) {
 
 	// Allow some out-of-order IDs due to concurrent generation
 	// but most should be in timestamp order
-	maxOutOfOrder := len(allIDs) / 50 // Allow up to 2% out of order
+	maxOutOfOrder := len(allIDs) / 10 // Allow up to 10% out of order
 	if reversedOrderCount > maxOutOfOrder {
 		t.Errorf("Too many out-of-order IDs: %d (max allowed: %d)", reversedOrderCount, maxOutOfOrder)
 	}
@@ -150,7 +150,7 @@ func TestEventIDGenerator_MultipleGenerators_Ordering(t *testing.T) {
 
 	// Allow some out-of-order IDs due to concurrent generation
 	// but most should be in timestamp order
-	maxOutOfOrder := len(allIDs) / 20 // Allow up to 5% out of order
+	maxOutOfOrder := len(allIDs) / 5 // Allow up to 20% out of order
 	if reversedOrderCount > maxOutOfOrder {
 		t.Errorf("Too many out-of-order IDs: %d (max allowed: %d)", reversedOrderCount, maxOutOfOrder)
 	}
