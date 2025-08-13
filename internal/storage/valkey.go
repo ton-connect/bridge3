@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -13,42 +14,53 @@ import (
 )
 
 type ValkeyStorage struct {
-	client      *redis.Client
+	client      redis.UniversalClient
 	pubSubConn  *redis.PubSub
 	subscribers map[string][]chan<- models.SseMessage
 	subMutex    sync.RWMutex
 }
 
 // NewValkeyStorage creates a new Valkey storage instance
+// Supports both single node and cluster modes based on URI format
 func NewValkeyStorage(valkeyURI string) (*ValkeyStorage, error) {
 	log := log.WithField("prefix", "NewValkeyStorage")
 
-	opts, err := redis.ParseURL(valkeyURI)
-	if err != nil {
-		log.Errorf("failed to parse Valkey URI: %v", err)
-		return nil, err
+	uris := strings.Split(valkeyURI, ",")
+	addrs := make([]string, len(uris))
+	var password string
+
+	for i, uri := range uris {
+		opts, err := redis.ParseURL(strings.TrimSpace(uri))
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse URI %d: %w", i+1, err)
+		}
+		addrs[i] = opts.Addr
+		if i == 0 {
+			password = opts.Password
+		}
 	}
 
-	rdb := redis.NewClient(opts)
+	var client redis.UniversalClient
+	if len(uris) > 1 {
+		log.Infof("Using cluster mode with %d nodes", len(uris))
+		client = redis.NewClusterClient(&redis.ClusterOptions{Addrs: addrs, Password: password})
+	} else {
+		log.Info("Using single-node mode")
+		client = redis.NewClient(&redis.Options{Addr: addrs[0], Password: password})
+	}
 
-	// Test connection
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	_, err = rdb.Ping(ctx).Result()
-	if err != nil {
-		log.Errorf("failed to connect to Valkey: %v", err)
-		return nil, err
+	if err := client.Ping(ctx).Err(); err != nil {
+		return nil, fmt.Errorf("connection failed: %w", err)
 	}
 
-	log.Info("successfully connected to Valkey")
-
-	storage := &ValkeyStorage{
-		client:      rdb,
+	log.Info("Successfully connected to Valkey")
+	return &ValkeyStorage{
+		client:      client,
 		subscribers: make(map[string][]chan<- models.SseMessage),
-	}
-
-	return storage, nil
+	}, nil
 }
 
 // Pub publishes a message to Redis and stores it with TTL

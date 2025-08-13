@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        storage: [memory, valkey, nginx, dnsmasq] # , postgres - disabled temporarily
+        storage: [memory, valkey, nginx, dnsmasq, sharded-valkey] # , postgres - disabled temporarily
 
     steps:
     - uses: actions/checkout@v5
