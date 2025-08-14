@@ -157,7 +157,7 @@ loop:
 			c.Response().Flush()
 			deliveredMessagesMetric.Inc()
 		case <-ticker.C:
-			_, err = fmt.Fprintf(c.Response(), "event: heartbeat\n\n")
+			_, err = fmt.Fprintf(c.Response(), "event: heartbeat\r\ndata: \r\n\n")
 			if err != nil {
 				log.Errorf("ticker can't write to connection: %v", err)
 				break loop
