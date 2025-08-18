@@ -86,9 +86,10 @@ func (h *handler) EventRegistrationHandler(c echo.Context) error {
 		return c.JSON(utils.HttpResError("streaming unsupported", http.StatusBadRequest))
 	}
 	c.Response().Header().Set("Content-Type", "text/event-stream")
-	c.Response().Header().Set("Cache-Control", "no-cache")
+	c.Response().Header().Set("Cache-Control", "private, no-cache, no-transform")
 	c.Response().Header().Set("Connection", "keep-alive")
 	c.Response().Header().Set("Transfer-Encoding", "chunked")
+	c.Response().Header().Set("X-Accel-Buffering", "no")
 	c.Response().WriteHeader(http.StatusOK)
 	if _, err := fmt.Fprint(c.Response(), "\n"); err != nil {
 		log.Errorf("failed to write initial newline: %v", err)
