@@ -113,7 +113,7 @@ func (h *handler) EventRegistrationHandler(c echo.Context) error {
 		badRequestMetric.Inc()
 		errorMsg := "invalid heartbeat type. Supported: legacy and message"
 		log.Error(errorMsg)
-		return c.JSON(HttpResError(errorMsg, http.StatusBadRequest))
+		return c.JSON(utils.HttpResError(errorMsg, http.StatusBadRequest))
 	}
 
 	var lastEventId int64
@@ -176,7 +176,7 @@ loop:
 			c.Response().Flush()
 			deliveredMessagesMetric.Inc()
 		case <-ticker.C:
-			_, err = fmt.Fprintf(c.Response(), heartbeatMsg)
+			_, err = fmt.Fprint(c.Response(), heartbeatMsg)
 			if err != nil {
 				log.Errorf("ticker can't write to connection: %v", err)
 				break loop
