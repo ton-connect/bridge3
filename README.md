@@ -17,6 +17,8 @@ make build
 
 Use `make help` to see all available commands and storage options.
 
+**Note:** For common issues and troubleshooting, see [KNOWN_ISSUES.md](KNOWN_ISSUES.md)
+
 ## 📋Requirements
 
 - Go 1.23+
