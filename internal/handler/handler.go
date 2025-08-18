@@ -23,6 +23,11 @@ import (
 	"github.com/ton-connect/bridge3/internal/utils"
 )
 
+var validHeartbeatTypes = map[string]string{
+	"legacy":  "event: heartbeat\n\n",
+	"message": "event: message\ndata: heartbeat\n\n",
+}
+
 var (
 	activeConnectionMetric = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "number_of_acitve_connections",
@@ -98,6 +103,19 @@ func (h *handler) EventRegistrationHandler(c echo.Context) error {
 	c.Response().Flush()
 	params := c.QueryParams()
 
+	heartbeatType := "legacy"
+	if heartbeatParam, exists := params["heartbeat"]; exists && len(heartbeatParam) > 0 {
+		heartbeatType = heartbeatParam[0]
+	}
+
+	heartbeatMsg, ok := validHeartbeatTypes[heartbeatType]
+	if !ok {
+		badRequestMetric.Inc()
+		errorMsg := "invalid heartbeat type. Supported: legacy and message"
+		log.Error(errorMsg)
+		return c.JSON(HttpResError(errorMsg, http.StatusBadRequest))
+	}
+
 	var lastEventId int64
 	var err error
 	lastEventIDStr := c.Request().Header.Get("Last-Event-ID")
@@ -158,7 +176,7 @@ loop:
 			c.Response().Flush()
 			deliveredMessagesMetric.Inc()
 		case <-ticker.C:
-			_, err = fmt.Fprintf(c.Response(), "event: message\r\ndata: heartbeat\r\n\n")
+			_, err = fmt.Fprintf(c.Response(), heartbeatMsg)
 			if err != nil {
 				log.Errorf("ticker can't write to connection: %v", err)
 				break loop
