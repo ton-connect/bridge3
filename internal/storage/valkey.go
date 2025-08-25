@@ -64,11 +64,11 @@ func NewValkeyStorage(valkeyURI string) (*ValkeyStorage, error) {
 }
 
 // Pub publishes a message to Redis and stores it with TTL
-func (s *ValkeyStorage) Pub(ctx context.Context, key string, ttl int64, message models.SseMessage) error {
+func (s *ValkeyStorage) Pub(ctx context.Context, message models.SseMessage, ttl int64) error {
 	log := log.WithField("prefix", "ValkeyStorage.Pub")
 
 	// Publish to Redis channel
-	channel := fmt.Sprintf("client:%s", key)
+	channel := fmt.Sprintf("client:%s", message.To)
 	messageData, err := json.Marshal(message)
 	if err != nil {
 		log.Errorf("failed to marshal message: %v", err)
@@ -96,7 +96,7 @@ func (s *ValkeyStorage) Pub(ctx context.Context, key string, ttl int64, message 
 	// Set expiration on the key itself
 	s.client.Expire(ctx, channel, time.Duration(ttl+60)*time.Second) // TODO remove 60 seconds buffer?
 
-	log.Debugf("published and stored message for client %s with TTL %d seconds", key, ttl)
+	log.Debugf("published and stored message for client %s with TTL %d seconds", message.To, ttl)
 	return nil
 }
 
@@ -121,6 +121,7 @@ func (s *ValkeyStorage) Sub(ctx context.Context, keys []string, lastEventId int6
 		clientKey := fmt.Sprintf("client:%s", key)
 
 		// Remove expired messages first
+		// TODO support expired messages but not delivered log
 		s.client.ZRemRangeByScore(ctx, clientKey, "0", fmt.Sprintf("%d", now))
 
 		// Get all remaining messages

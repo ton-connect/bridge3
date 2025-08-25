@@ -3,6 +3,8 @@ package handler
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,12 +13,13 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
 	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/ton-connect/bridge3/internal/config"
 	"github.com/ton-connect/bridge3/internal/models"
 	"github.com/ton-connect/bridge3/internal/storage"
@@ -53,11 +56,6 @@ var (
 		Name:    "number_of_client_ids_per_connection",
 		Buckets: []float64{1, 2, 3, 4, 5, 10, 20, 30, 40, 50, 100},
 	})
-	// TODO implement
-	// expiredMessagesMetric = promauto.NewCounter(prometheus.CounterOpts{
-	// 	Name: "number_of_expired_messages",
-	// 	Help: "The total number of expired messages",
-	// })
 )
 
 type stream struct {
@@ -84,7 +82,7 @@ func NewHandler(s storage.Storage, heartbeatInterval time.Duration) *handler {
 }
 
 func (h *handler) EventRegistrationHandler(c echo.Context) error {
-	log := log.WithField("prefix", "EventRegistrationHandler")
+	log := logrus.WithField("prefix", "EventRegistrationHandler")
 	_, ok := c.Response().Writer.(http.Flusher)
 	if !ok {
 		http.Error(c.Response().Writer, "streaming unsupported", http.StatusInternalServerError)
@@ -147,7 +145,7 @@ func (h *handler) EventRegistrationHandler(c echo.Context) error {
 	}
 	clientIds := strings.Split(clientId[0], ",")
 	clientIdsPerConnectionMetric.Observe(float64(len(clientIds)))
-	session := h.CreateSession(clientId[0], clientIds, lastEventId)
+	session := h.CreateSession(clientIds, lastEventId)
 
 	ctx := c.Request().Context()
 	notify := ctx.Done()
@@ -165,7 +163,7 @@ loop:
 		select {
 		case msg, ok := <-session.GetMessages():
 			if !ok {
-				log.Errorf("can't read from channel")
+				// can't read from channel, session is closed
 				break loop
 			}
 			_, err = fmt.Fprintf(c.Response(), "event: %v\nid: %v\ndata: %v\n\n", "message", msg.EventId, string(msg.Message))
@@ -174,9 +172,31 @@ loop:
 				break loop
 			}
 			c.Response().Flush()
+
+			fromId := "unknown"
+			toId := msg.To
+
+			hash := sha256.Sum256(msg.Message)
+			messageHash := hex.EncodeToString(hash[:])
+
+			var bridgeMsg models.BridgeMessage
+			if err := json.Unmarshal(msg.Message, &bridgeMsg); err == nil {
+				fromId = bridgeMsg.From
+				contentHash := sha256.Sum256([]byte(bridgeMsg.Message))
+				messageHash = hex.EncodeToString(contentHash[:])
+			}
+
+			logrus.WithFields(logrus.Fields{
+				"hash":     messageHash,
+				"from":     fromId,
+				"to":       toId,
+				"event_id": msg.EventId,
+			}).Debug("message sent")
+
 			deliveredMessagesMetric.Inc()
+			storage.GlobalExpiredCache.MarkDelivered(msg.EventId)
 		case <-ticker.C:
-			_, err = fmt.Fprint(c.Response(), heartbeatMsg)
+			_, err = fmt.Fprintf(c.Response(), heartbeatMsg)
 			if err != nil {
 				log.Errorf("ticker can't write to connection: %v", err)
 				break loop
@@ -191,7 +211,7 @@ loop:
 
 func (h *handler) SendMessageHandler(c echo.Context) error {
 	ctx := c.Request().Context()
-	log := log.WithContext(ctx).WithField("prefix", "SendMessageHandler")
+	log := logrus.WithContext(ctx).WithField("prefix", "SendMessageHandler")
 
 	params := c.QueryParams()
 	clientId, ok := params["client_id"]
@@ -268,16 +288,37 @@ func (h *handler) SendMessageHandler(c echo.Context) error {
 	sseMessage := models.SseMessage{
 		EventId: h.eventIDGen.NextID(),
 		Message: mes,
+		To:      toId[0],
 	}
 
 	// Send message only to storage - pub-sub will handle distribution
 	go func() {
 		log := log.WithField("prefix", "SendMessageHandler.storage.Pub")
-		err = h.storage.Pub(context.Background(), toId[0], ttl, sseMessage)
+		err = h.storage.Pub(context.Background(), sseMessage, ttl)
 		if err != nil {
+			// TODO ooops
 			log.Errorf("db error: %v", err)
 		}
 	}()
+
+	var bridgeMsg models.BridgeMessage
+	fromId := "unknown"
+
+	hash := sha256.Sum256(sseMessage.Message)
+	messageHash := hex.EncodeToString(hash[:])
+
+	if err := json.Unmarshal(sseMessage.Message, &bridgeMsg); err == nil {
+		fromId = bridgeMsg.From
+		contentHash := sha256.Sum256([]byte(bridgeMsg.Message))
+		messageHash = hex.EncodeToString(contentHash[:])
+	}
+
+	log.WithFields(logrus.Fields{
+		"hash":     messageHash,
+		"from":     fromId,
+		"to":       toId[0],
+		"event_id": sseMessage.EventId,
+	}).Debug("message received")
 
 	transferedMessagesNumMetric.Inc()
 	return c.JSON(http.StatusOK, utils.HttpResOk())
@@ -285,7 +326,7 @@ func (h *handler) SendMessageHandler(c echo.Context) error {
 }
 
 func (h *handler) removeConnection(ses *Session) {
-	log := log.WithField("prefix", "removeConnection")
+	log := logrus.WithField("prefix", "removeConnection")
 	log.Infof("remove session: %v", ses.ClientIds)
 	for _, id := range ses.ClientIds {
 		h.Mux.RLock()
@@ -314,8 +355,8 @@ func (h *handler) removeConnection(ses *Session) {
 	}
 }
 
-func (h *handler) CreateSession(sessionId string, clientIds []string, lastEventId int64) *Session {
-	log := log.WithField("prefix", "CreateSession")
+func (h *handler) CreateSession(clientIds []string, lastEventId int64) *Session {
+	log := logrus.WithField("prefix", "CreateSession")
 	log.Infof("make new session with ids: %v", clientIds)
 	session := NewSession(h.storage, clientIds, lastEventId)
 	activeConnectionMetric.Inc()
