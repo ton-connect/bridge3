@@ -55,7 +55,7 @@ func Test_removeExpiredMessages(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := removeExpiredMessages(tt.ms, tt.now); !reflect.DeepEqual(got, tt.want) {
+			if got := removeExpiredMessages(tt.ms, tt.now, "test-key"); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("removeExpiredMessages() = %v, want %v", got, tt.want)
 			}
 		})
@@ -132,22 +132,17 @@ func TestMemStorage_PubSub(t *testing.T) {
 		t.Errorf("Sub() error = %v", err)
 	}
 
-	// Publish messages
-	msg1 := models.SseMessage{EventId: 1, Message: []byte("msg1")}
-	msg2 := models.SseMessage{EventId: 2, Message: []byte("msg2")}
-	msg3 := models.SseMessage{EventId: 3, Message: []byte("msg3")}
-
-	err = s.Pub(context.Background(), "1", 60, msg1)
+	err = s.Pub(context.Background(), models.SseMessage{EventId: 1, To: "1", Message: []byte("msg1")}, 60)
 	if err != nil {
 		t.Errorf("Pub() error = %v", err)
 	}
 
-	err = s.Pub(context.Background(), "2", 60, msg2)
+	err = s.Pub(context.Background(), models.SseMessage{EventId: 2, To: "2", Message: []byte("msg2")}, 60)
 	if err != nil {
 		t.Errorf("Pub() error = %v", err)
 	}
 
-	err = s.Pub(context.Background(), "1", 60, msg3)
+	err = s.Pub(context.Background(), models.SseMessage{EventId: 3, To: "1", Message: []byte("msg3")}, 60)
 	if err != nil {
 		t.Errorf("Pub() error = %v", err)
 	}
@@ -187,7 +182,7 @@ func TestMemStorage_PubSub(t *testing.T) {
 	}
 
 	// Publish another message - should not be received
-	err = s.Pub(context.Background(), "1", 60, models.SseMessage{EventId: 4})
+	err = s.Pub(context.Background(), models.SseMessage{EventId: 4, To: "1"}, 60)
 	if err != nil {
 		t.Errorf("Pub() error = %v", err)
 	}
@@ -204,10 +199,10 @@ func TestMemStorage_LastEventId(t *testing.T) {
 	s := NewMemStorage()
 
 	// Store some messages first
-	_ = s.Pub(context.Background(), "1", 60, models.SseMessage{EventId: 1})
-	_ = s.Pub(context.Background(), "1", 60, models.SseMessage{EventId: 2})
-	_ = s.Pub(context.Background(), "1", 60, models.SseMessage{EventId: 3})
-	_ = s.Pub(context.Background(), "1", 60, models.SseMessage{EventId: 4})
+	_ = s.Pub(context.Background(), models.SseMessage{EventId: 1, To: "1"}, 60)
+	_ = s.Pub(context.Background(), models.SseMessage{EventId: 2, To: "1"}, 60)
+	_ = s.Pub(context.Background(), models.SseMessage{EventId: 3, To: "1"}, 60)
+	_ = s.Pub(context.Background(), models.SseMessage{EventId: 4, To: "1"}, 60)
 
 	// Subscribe with lastEventId = 2 (should only get messages 3 and 4)
 	ch := make(chan models.SseMessage, 10)
