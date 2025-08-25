@@ -169,6 +169,7 @@ func main() {
 
 	e.GET("/bridge/events", h.EventRegistrationHandler)
 	e.POST("/bridge/message", h.SendMessageHandler)
+	e.POST("/bridge/verify", h.ConnectVerifyHandler)
 
 	// Health and ready endpoints
 	e.GET("/health", func(c echo.Context) error {
