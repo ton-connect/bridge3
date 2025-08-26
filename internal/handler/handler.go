@@ -77,7 +77,6 @@ type verifyResponse struct {
 	Status string `json:"status"`
 }
 
-
 type stream struct {
 	Sessions []*Session
 	mux      sync.RWMutex
@@ -88,6 +87,8 @@ type handler struct {
 	storage           storage.Storage
 	eventIDGen        *EventIDGenerator
 	heartbeatInterval time.Duration
+	datamap           map[string][]connect_client // todo - use lru maps, add ttl 5 minutes
+
 }
 
 func NewHandler(s storage.Storage, heartbeatInterval time.Duration) *handler {
@@ -239,7 +240,7 @@ loop:
 				"from":     fromId,
 				"to":       toId,
 				"event_id": msg.EventId,
-				"trace_id": bridgeMsg.TraceId,
+				"trace_id": bridgeMsg.TraceID,
 			}).Debug("message sent")
 
 			deliveredMessagesMetric.Inc()
@@ -440,7 +441,7 @@ func (h *handler) SendMessageHandler(c echo.Context) error {
 		From:                clientId[0],
 		Message:             string(message),
 		BridgeRequestSource: encryptedRequestSource,
-		TraceId:             traceId,
+		TraceID:             traceId,
 	})
 	if err != nil {
 		badRequestMetric.Inc()
@@ -481,7 +482,7 @@ func (h *handler) SendMessageHandler(c echo.Context) error {
 		"from":     fromId,
 		"to":       toId[0],
 		"event_id": sseMessage.EventId,
-		"trace_id": bridgeMsg.TraceId,
+		"trace_id": bridgeMsg.TraceID,
 	}).Debug("message received")
 
 	transferedMessagesNumMetric.Inc()
