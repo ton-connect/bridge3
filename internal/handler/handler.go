@@ -16,11 +16,11 @@ import (
 
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/sirupsen/logrus"
-	log "github.com/sirupsen/logrus"
 	"github.com/ton-connect/bridge3/internal/config"
 	"github.com/ton-connect/bridge3/internal/models"
 	"github.com/ton-connect/bridge3/internal/storage"
@@ -299,7 +299,7 @@ func (h *handler) SendMessageHandler(c echo.Context) error {
 		}
 	}
 
-	mes, err := json.Marshal(datatype.BridgeMessage{
+	mes, err := json.Marshal(models.BridgeMessage{
 		From:    clientId[0],
 		Message: string(message),
 		TraceId: traceId,
@@ -307,7 +307,7 @@ func (h *handler) SendMessageHandler(c echo.Context) error {
 	if err != nil {
 		badRequestMetric.Inc()
 		log.Error(err)
-		return c.JSON(HttpResError(err.Error(), http.StatusBadRequest))
+		return c.JSON(utils.HttpResError(err.Error(), http.StatusBadRequest))
 	}
 
 	sseMessage := models.SseMessage{
