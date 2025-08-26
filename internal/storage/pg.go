@@ -81,7 +81,7 @@ func (s *PgStorage) worker() {
 }
 
 // Pub is not implemented for Postgres storage
-func (s *PgStorage) Pub(ctx context.Context, key string, ttl int64, message models.SseMessage) error {
+func (s *PgStorage) Pub(ctx context.Context, message models.SseMessage, ttl int64) error {
 	return errors.New("pub-sub not implemented for Postgres storage")
 }
 

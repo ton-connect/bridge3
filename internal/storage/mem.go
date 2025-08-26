@@ -2,11 +2,22 @@ package storage
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"sync"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/sirupsen/logrus"
 	"github.com/ton-connect/bridge3/internal/models"
 )
+
+var expiredMessagesMetric = promauto.NewCounter(prometheus.CounterOpts{
+	Name: "number_of_expired_messages",
+	Help: "The total number of expired messages",
+})
 
 type MemStorage struct {
 	db          map[string][]message
@@ -19,7 +30,7 @@ type message struct {
 	expireAt time.Time
 }
 
-func (m message) isExpired(now time.Time) bool {
+func (m message) IsExpired(now time.Time) bool {
 	return m.expireAt.Before(now)
 }
 
@@ -32,10 +43,32 @@ func NewMemStorage() *MemStorage {
 	return &s
 }
 
-func removeExpiredMessages(ms []message, now time.Time) []message {
+func removeExpiredMessages(ms []message, now time.Time, clientID string) []message {
+	log := logrus.WithField("prefix", "removeExpiredMessages")
 	results := make([]message, 0)
 	for _, m := range ms {
-		if !m.isExpired(now) {
+		if m.IsExpired(now) {
+			if !GlobalExpiredCache.IsDelivered(m.EventId) {
+				var bridgeMsg models.BridgeMessage
+				fromID := "unknown"
+				hash := sha256.Sum256(m.Message)
+				messageHash := hex.EncodeToString(hash[:])
+
+				if err := json.Unmarshal(m.Message, &bridgeMsg); err == nil {
+					fromID = bridgeMsg.From
+					contentHash := sha256.Sum256([]byte(bridgeMsg.Message))
+					messageHash = hex.EncodeToString(contentHash[:])
+				}
+
+				expiredMessagesMetric.Inc()
+				log.WithFields(map[string]interface{}{
+					"hash":     messageHash,
+					"from":     fromID,
+					"to":       clientID,
+					"event_id": m.EventId,
+				}).Debug("message expired")
+			}
+		} else {
 			results = append(results, m)
 		}
 	}
@@ -46,7 +79,7 @@ func (s *MemStorage) watcher() {
 	for {
 		s.lock.Lock()
 		for key, ms := range s.db {
-			s.db[key] = removeExpiredMessages(ms, time.Now())
+			s.db[key] = removeExpiredMessages(ms, time.Now(), key)
 		}
 		s.lock.Unlock()
 		time.Sleep(time.Second)
@@ -54,18 +87,18 @@ func (s *MemStorage) watcher() {
 }
 
 // Pub publishes a message to all subscribers and stores it with TTL
-func (s *MemStorage) Pub(ctx context.Context, key string, ttl int64, mes models.SseMessage) error {
+func (s *MemStorage) Pub(ctx context.Context, mes models.SseMessage, ttl int64) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	// Store message with TTL
-	s.db[key] = append(s.db[key], message{
+	s.db[mes.To] = append(s.db[mes.To], message{
 		SseMessage: mes,
 		expireAt:   time.Now().Add(time.Duration(ttl) * time.Second),
 	})
 
 	// Send to all subscribers for this key
-	if subscribers, exists := s.subscribers[key]; exists {
+	if subscribers, exists := s.subscribers[mes.To]; exists {
 		for _, ch := range subscribers {
 			select {
 			case ch <- mes:
@@ -100,7 +133,7 @@ func (s *MemStorage) Sub(ctx context.Context, keys []string, lastEventId int64, 
 		}
 
 		for _, msg := range messages {
-			if msg.isExpired(now) {
+			if msg.IsExpired(now) {
 				continue
 			}
 			if msg.EventId <= lastEventId {
