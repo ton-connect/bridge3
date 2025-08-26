@@ -20,6 +20,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/ton-connect/bridge3/internal/config"
 	"github.com/ton-connect/bridge3/internal/models"
 	"github.com/ton-connect/bridge3/internal/storage"
@@ -191,6 +192,7 @@ loop:
 				"from":     fromId,
 				"to":       toId,
 				"event_id": msg.EventId,
+				"trace_id": bridgeMsg.TraceId,
 			}).Debug("message sent")
 
 			deliveredMessagesMetric.Inc()
@@ -254,15 +256,6 @@ func (h *handler) SendMessageHandler(c echo.Context) error {
 		log.Error(err)
 		return c.JSON(utils.HttpResError(err.Error(), http.StatusBadRequest))
 	}
-	mes, err := json.Marshal(models.BridgeMessage{
-		From:    clientId[0],
-		Message: string(message),
-	})
-	if err != nil {
-		badRequestMetric.Inc()
-		log.Error(err)
-		return c.JSON(utils.HttpResError(err.Error(), http.StatusBadRequest))
-	}
 	if config.Config.CopyToURL != "" {
 		go func() {
 			u, err := url.Parse(config.Config.CopyToURL)
@@ -282,6 +275,39 @@ func (h *handler) SendMessageHandler(c echo.Context) error {
 		go func(clientID, topic, message string) {
 			SendWebhook(clientID, WebhookData{Topic: topic, Hash: message})
 		}(clientId[0], topic[0], string(message))
+	}
+
+	traceIdParam, ok := params["trace_id"]
+	traceId := "unknown"
+	if ok {
+		uuids, err := uuid.Parse(traceIdParam[0])
+		if err != nil {
+			log.WithFields(logrus.Fields{
+				"error":            err,
+				"invalid_trace_id": traceIdParam[0],
+			}).Warn("generating a new trace_id")
+		} else {
+			traceId = uuids.String()
+		}
+	}
+	if traceId == "unknown" {
+		uuids, err := uuid.NewV7()
+		if err != nil {
+			log.Error(err)
+		} else {
+			traceId = uuids.String()
+		}
+	}
+
+	mes, err := json.Marshal(datatype.BridgeMessage{
+		From:    clientId[0],
+		Message: string(message),
+		TraceId: traceId,
+	})
+	if err != nil {
+		badRequestMetric.Inc()
+		log.Error(err)
+		return c.JSON(HttpResError(err.Error(), http.StatusBadRequest))
 	}
 
 	sseMessage := models.SseMessage{
@@ -317,6 +343,7 @@ func (h *handler) SendMessageHandler(c echo.Context) error {
 		"from":     fromId,
 		"to":       toId[0],
 		"event_id": sseMessage.EventId,
+		"trace_id": bridgeMsg.TraceId,
 	}).Debug("message received")
 
 	transferedMessagesNumMetric.Inc()
