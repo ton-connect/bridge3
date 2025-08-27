@@ -59,11 +59,11 @@ var (
 	})
 )
 
-type connect_client struct {
-	client_id string
-	ip        string
-	referrer  string // normalized origin
-	time      time.Time
+type connectClient struct {
+	clientId string
+	ip       string
+	referrer string // normalized origin
+	time     time.Time
 }
 
 type verifyRequest struct {
@@ -87,7 +87,7 @@ type handler struct {
 	storage           storage.Storage
 	eventIDGen        *EventIDGenerator
 	heartbeatInterval time.Duration
-	datamap           map[string][]connect_client // todo - use lru maps, add ttl 5 minutes
+	datamap           map[string][]connectClient // todo - use lru maps, add ttl 5 minutes
 
 }
 
@@ -98,24 +98,9 @@ func NewHandler(s storage.Storage, heartbeatInterval time.Duration) *handler {
 		storage:           s,
 		eventIDGen:        NewEventIDGenerator(),
 		heartbeatInterval: heartbeatInterval,
-		datamap:           make(map[string][]connect_client),
+		datamap:           make(map[string][]connectClient),
 	}
 	return &h
-}
-
-// TODO - rewrite to extract from origin, not referrer
-func extractOrigin(rawURL string) string {
-	if rawURL == "" {
-		return ""
-	}
-	u, err := url.Parse(rawURL)
-	if err != nil {
-		return rawURL
-	}
-	if u.Scheme == "" || u.Host == "" {
-		return rawURL
-	}
-	return u.Scheme + "://" + u.Host
 }
 
 func (h *handler) EventRegistrationHandler(c echo.Context) error {
@@ -185,12 +170,12 @@ func (h *handler) EventRegistrationHandler(c echo.Context) error {
 	session := h.CreateSession(clientIds, lastEventId)
 
 	ip := c.RealIP()
-	referrer := extractOrigin(c.Request().Header.Get("Referer"))
-	connect_client := connect_client{
-		client_id: clientId[0],
-		ip:        ip,
-		referrer:  referrer,
-		time:      time.Now(),
+	origin := utils.ExtractOrigin(c.Request().Header.Get("Origin"))
+	connect_client := connectClient{
+		clientId: clientId[0],
+		ip:       ip,
+		referrer: origin,
+		time:     time.Now(),
 	}
 	h.Mux.Lock()
 	h.datamap[clientId[0]] = append(h.datamap[clientId[0]], connect_client)
@@ -240,7 +225,7 @@ loop:
 				"from":     fromId,
 				"to":       toId,
 				"event_id": msg.EventId,
-				"trace_id": bridgeMsg.TraceID,
+				"trace_id": bridgeMsg.TraceId,
 			}).Debug("message sent")
 
 			deliveredMessagesMetric.Inc()
@@ -295,7 +280,7 @@ func (h *handler) ConnectVerifyHandler(c echo.Context) error {
 		badRequestMetric.Inc()
 		return c.JSON(utils.HttpResError("param \"url\" not present", http.StatusBadRequest))
 	}
-	req.URL = extractOrigin(req.URL)
+	req.URL = utils.ExtractOrigin(req.URL)
 	if req.Type == "" {
 		badRequestMetric.Inc()
 		return c.JSON(utils.HttpResError("param \"type\" not present", http.StatusBadRequest))
@@ -413,13 +398,13 @@ func (h *handler) SendMessageHandler(c echo.Context) error {
 		}
 	}
 
-	referrer := extractOrigin(c.Request().Header.Get("Origin"))
+	origin := utils.ExtractOrigin(c.Request().Header.Get("Origin"))
 	ip := c.RealIP()
 	userAgent := c.Request().Header.Get("User-Agent")
 
 	// Create request source metadata
 	requestSource := models.BridgeRequestSource{
-		Origin:    referrer,
+		Origin:    origin,
 		IP:        ip,
 		Time:      time.Now().UTC().Format(time.RFC3339),
 		ClientID:  clientId[0],
@@ -441,7 +426,7 @@ func (h *handler) SendMessageHandler(c echo.Context) error {
 		From:                clientId[0],
 		Message:             string(message),
 		BridgeRequestSource: encryptedRequestSource,
-		TraceID:             traceId,
+		TraceId:             traceId,
 	})
 	if err != nil {
 		badRequestMetric.Inc()
@@ -482,7 +467,7 @@ func (h *handler) SendMessageHandler(c echo.Context) error {
 		"from":     fromId,
 		"to":       toId[0],
 		"event_id": sseMessage.EventId,
-		"trace_id": bridgeMsg.TraceID,
+		"trace_id": bridgeMsg.TraceId,
 	}).Debug("message received")
 
 	transferedMessagesNumMetric.Inc()
