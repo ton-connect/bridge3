@@ -26,27 +26,36 @@ func NewValkeyStorage(valkeyURI string) (*ValkeyStorage, error) {
 	log := log.WithField("prefix", "NewValkeyStorage")
 
 	uris := strings.Split(valkeyURI, ",")
-	addrs := make([]string, len(uris))
-	var password string
-
-	for i, uri := range uris {
-		opts, err := redis.ParseURL(strings.TrimSpace(uri))
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse URI %d: %w", i+1, err)
-		}
-		addrs[i] = opts.Addr
-		if i == 0 {
-			password = opts.Password
-		}
-	}
 
 	var client redis.UniversalClient
 	if len(uris) > 1 {
+		addrs := make([]string, len(uris))
+		// TODO what if other options differ between nodes?
+		var firstOpts *redis.Options
+		for i, uri := range uris {
+			opts, err := redis.ParseURL(strings.TrimSpace(uri))
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse URI %d: %w", i+1, err)
+			}
+			addrs[i] = opts.Addr
+			if i == 0 {
+				firstOpts = opts
+			}
+		}
 		log.Infof("Using cluster mode with %d nodes", len(uris))
-		client = redis.NewClusterClient(&redis.ClusterOptions{Addrs: addrs, Password: password})
+		client = redis.NewClusterClient(&redis.ClusterOptions{
+			Addrs:     addrs,
+			Password:  firstOpts.Password,
+			Username:  firstOpts.Username,
+			TLSConfig: firstOpts.TLSConfig,
+		})
 	} else {
+		opts, err := redis.ParseURL(strings.TrimSpace(uris[0]))
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse URI: %w", err)
+		}
 		log.Info("Using single-node mode")
-		client = redis.NewClient(&redis.Options{Addr: addrs[0], Password: password})
+		client = redis.NewClient(opts)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
