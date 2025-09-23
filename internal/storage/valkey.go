@@ -91,14 +91,12 @@ func (s *ValkeyStorage) Pub(ctx context.Context, message models.SseMessage, ttl 
 	channel := fmt.Sprintf("client:%s", message.To)
 	messageData, err := json.Marshal(message)
 	if err != nil {
-		log.Errorf("failed to marshal message: %v", err)
-		return err
+		return fmt.Errorf("failed to marshal message: %w", err)
 	}
 
 	err = s.client.Publish(ctx, channel, messageData).Err()
 	if err != nil {
-		log.Errorf("failed to publish message to channel %s: %v", channel, err)
-		return err
+		return fmt.Errorf("failed to publish message to channel %s: %w", channel, err)
 	}
 
 	// Store message with TTL as backup for offline clients
@@ -109,8 +107,7 @@ func (s *ValkeyStorage) Pub(ctx context.Context, message models.SseMessage, ttl 
 	}).Err()
 
 	if err != nil {
-		log.Errorf("failed to store message in Valkey: %v", err)
-		return err
+		return fmt.Errorf("failed to store message in sorted set for channel %s: %w", channel, err)
 	}
 
 	// Set expiration on the key itself
@@ -212,8 +209,7 @@ func (s *ValkeyStorage) Unsub(ctx context.Context, keys []string) error {
 	if s.pubSubConn != nil {
 		err := s.pubSubConn.Unsubscribe(ctx, channels...)
 		if err != nil {
-			log.Errorf("failed to unsubscribe from channels: %v", err)
-			return err
+			return fmt.Errorf("failed to unsubscribe from channels: %w", err)
 		}
 	}
 
@@ -267,8 +263,7 @@ func (s *ValkeyStorage) HealthCheck() error {
 
 	_, err := s.client.Ping(ctx).Result()
 	if err != nil {
-		log.Errorf("Valkey health check failed: %v", err)
-		return err
+		return fmt.Errorf("valkey health check failed: %w", err)
 	}
 
 	log.Info("Valkey is healthy")
