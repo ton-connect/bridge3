@@ -48,6 +48,17 @@ func NewValkeyStorage(valkeyURI string) (*ValkeyStorage, error) {
 			Password:  firstOpts.Password,
 			Username:  firstOpts.Username,
 			TLSConfig: firstOpts.TLSConfig,
+			// Enable automatic cluster redirection handling for AWS ElastiCache
+			ReadOnly:       false,
+			RouteByLatency: true,
+			RouteRandomly:  false,
+			// Set maximum redirects to handle MOVED responses
+			MaxRedirects: 3,
+			// Set appropriate timeouts for AWS ElastiCache
+			ReadTimeout:  30 * time.Second,
+			WriteTimeout: 30 * time.Second,
+			DialTimeout:  10 * time.Second,
+			PoolTimeout:  30 * time.Second,
 		})
 	} else {
 		opts, err := redis.ParseURL(strings.TrimSpace(uris[0]))
